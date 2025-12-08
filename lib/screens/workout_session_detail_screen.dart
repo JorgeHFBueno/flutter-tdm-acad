@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/workout_session.dart';
 import '../services/workout_analysis_service.dart';
+import '../models/workout_analysis_log.dart';
+import '../services/workout_analysis_log_service.dart';
 
 class WorkoutSessionDetailScreen extends StatefulWidget {
   const WorkoutSessionDetailScreen({super.key, required this.session});
@@ -17,6 +19,7 @@ class WorkoutSessionDetailScreen extends StatefulWidget {
 class _WorkoutSessionDetailScreenState
     extends State<WorkoutSessionDetailScreen> {
   final WorkoutAnalysisService _analysisService = WorkoutAnalysisService();
+  final WorkoutAnalysisLogService _analysisLogService = WorkoutAnalysisLogService();
 
   @override
   Widget build(BuildContext context) {
@@ -145,10 +148,25 @@ class _WorkoutSessionDetailScreenState
   }
 
   Future<void> _analyzeCurrentSession() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário não autenticado.')),
+        );
+      }
+      return;
+    }
     _showLoadingDialog();
     try {
       final prompt = _buildSessionPrompt(widget.session);
       final response = await _analysisService.analyzeText(prompt);
+
+      await _saveAnalysisLog(
+        userUid: user.uid,
+        prompt: prompt,
+        response: response,
+      );
       if (!mounted) return;
       Navigator.of(context).pop();
       await _showAnalysisResult(response);
@@ -158,6 +176,29 @@ class _WorkoutSessionDetailScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao analisar treino: $e')),
       );
+    }
+  }
+
+  Future<void> _saveAnalysisLog({
+    required String userUid,
+    required String prompt,
+    required String response,
+  }) async {
+    final log = WorkoutAnalysisLog(
+      id: '',
+      ownerUid: userUid,
+      workoutId: widget.session.workoutId,
+      workoutName: widget.session.workoutName,
+      type: 'session',
+      prompt: prompt,
+      response: response,
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      await _analysisLogService.saveLog(log);
+    } catch (e) {
+      print('Erro ao salvar histórico de análise de sessão: $e');
     }
   }
 

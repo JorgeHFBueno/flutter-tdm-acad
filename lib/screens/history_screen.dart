@@ -5,6 +5,9 @@ import 'package:intl/intl.dart';
 import '../models/workout_session.dart';
 import '../services/workout_analysis_service.dart';
 import 'workout_session_detail_screen.dart';
+import '../models/workout_analysis_log.dart';
+import '../services/workout_analysis_log_service.dart';
+import 'workout_analysis_history_screen.dart';
 
 class HistoryScreen extends StatefulWidget {
   const HistoryScreen({super.key, this.embedInScaffold = true});
@@ -17,6 +20,8 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   final WorkoutAnalysisService _analysisService = WorkoutAnalysisService();
+  final WorkoutAnalysisLogService _analysisLogService =
+  WorkoutAnalysisLogService();
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +80,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Histórico'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history_edu_outlined),
+            tooltip: 'Histórico de análises',
+            onPressed: _openAnalysisHistory,
+          ),
+        ],
       ),
       body: content,
     );
@@ -165,9 +177,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final sessions = query.docs
           .map(
             (doc) => WorkoutSession.fromMap(
-          Map<String, dynamic>.from(doc.data() as Map<String, dynamic>),
-          id: doc.id,
-        ),
+              Map<String, dynamic>.from(doc.data() as Map<String, dynamic>),
+              id: doc.id,
+            ),
       )
           .toList();
 
@@ -185,6 +197,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
       final prompt = _buildHistoryPrompt(sessions, session.workoutName);
       final response = await _analysisService.analyzeText(prompt);
+
+      await _saveAnalysisLog(
+        type: 'history',
+        session: session,
+        prompt: prompt,
+        response: response,
+      );
 
       if (!mounted) return;
       await _showAnalysisResult(response);
@@ -263,6 +282,40 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: const Text('Fechar'),
           )
         ],
+      ),
+    );
+  }
+  Future<void> _saveAnalysisLog({
+    required String type,
+    required WorkoutSession session,
+    required String prompt,
+    required String response,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    final log = WorkoutAnalysisLog(
+      id: '',
+      ownerUid: user.uid,
+      workoutId: session.workoutId,
+      workoutName: session.workoutName,
+      type: type,
+      prompt: prompt,
+      response: response,
+      createdAt: DateTime.now(),
+    );
+
+    try {
+      await _analysisLogService.saveLog(log);
+    } catch (e) {
+      print('Erro ao salvar histórico de análise: $e');
+    }
+  }
+
+  void _openAnalysisHistory() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WorkoutAnalysisHistoryScreen(),
       ),
     );
   }
