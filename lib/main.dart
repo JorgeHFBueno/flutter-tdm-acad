@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'screens/auth.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'screens/workout_creation_screen.dart';
 
 const apiKey = 'AIzaSyCUCBtkXf_GPGwQUGprO3URA1c2lk918RM';
 void main() async{
@@ -13,15 +14,6 @@ void main() async{
       options: DefaultFirebaseOptions.currentPlatform
   );
   Gemini.init(apiKey: apiKey, enableDebugging: true);
-
-  final CollectionReference _contatos =
-  FirebaseFirestore.instance.collection('contatos');
-  // _contatos.add({"nome" : "Maria", "idade" : "23"});
-  _contatos.doc("WtghWgkTeR0Xfd5wYb2T").update({"idade" : "25", "fone" : "76767"});
-  QuerySnapshot snapshot = await _contatos.get();
-  snapshot.docs.forEach((doc) {
-    print(doc.data().toString());
-  });
 
   await _setupPushNotifications();
   runApp(const MyApp());
@@ -42,7 +34,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Flutter Demo',
-      home: AuthScreen(),
+      initialRoute: '/',
+      routes: {
+        '/': (context) => AuthScreen(),
+        '/workout': (context) => const WorkoutCreationScreen(),
+      },
     );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../menuOptions.dart';
 import 'home.dart';
 import 'login_or_register.dart';
+import 'workout_creation_screen.dart';
 
 class AuthScreen extends StatefulWidget{
   AuthScreen({super.key});
@@ -22,7 +23,8 @@ class AuthScreenState extends State<AuthScreen>{
         stream: _auth.authStateChanges(),
         builder: (context,  snapshot){
           if (snapshot.hasData){
-            return MenuOptions();
+            //return MenuOptions();
+            return const WorkoutCreationScreen();
           }else{
             return LoginOrRegisterScreen();
           }
