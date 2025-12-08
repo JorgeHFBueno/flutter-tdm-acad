@@ -11,7 +11,15 @@ class WorkoutHistoryService {
       'workoutId': session.workoutId,
       'workoutName': session.workoutName,
       'ownerUid': session.ownerUid,
-      'performedAt': FieldValue.serverTimestamp(),
+      'performedAt': session.performedAt != null
+          ? Timestamp.fromDate(session.performedAt!)
+          : FieldValue.serverTimestamp(),
+      'startAt': session.startAt != null
+          ? Timestamp.fromDate(session.startAt!)
+          : FieldValue.serverTimestamp(),
+      'endAt': session.endAt != null
+          ? Timestamp.fromDate(session.endAt!)
+          : FieldValue.serverTimestamp(),
       'exercises': session.exercises.map((e) => e.toMap()).toList(),
     });
   }

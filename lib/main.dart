@@ -7,30 +7,51 @@ import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/workout_creation_screen.dart';
 import 'menu2.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-const apiKey = 'AIzaSyCUCBtkXf_GPGwQUGprO3URA1c2lk918RM';
-void main() async{
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform
-  );
-  Gemini.init(apiKey: apiKey, enableDebugging: true);
 
+  // 1) Carrega o .env
+  await dotenv.load(fileName: ".env");
+
+  // 2) Inicializa Firebase
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // 3) Lê a chave do Gemini do .env
+  final geminiApiKey = dotenv.env['GEMINI_API_KEY'];
+
+  if (geminiApiKey == null || geminiApiKey.isEmpty) {
+    // Se não achar a chave, loga no console pra você ver
+    debugPrint('GEMINI_API_KEY não encontrada no .env');
+  } else {
+    Gemini.init(
+      apiKey: geminiApiKey,
+      enableDebugging: true,
+    );
+  }
+
+  // 4) Push notifications
   await _setupPushNotifications();
+
+  // 5) Sobe o app
   runApp(const MyApp());
 }
 
-Future<void> _setupPushNotifications() async{
+Future<void> _setupPushNotifications() async {
   print('_setupPushNotifications (main) iniciou');
   final fcm = FirebaseMessaging.instance;
   await fcm.requestPermission();
   final token = await fcm.getToken();
-  print ('FCM token (main): $token');
-  print ('_setupPushNotifications (main) terminou');
+  print('FCM token (main): $token');
+  print('_setupPushNotifications (main) terminou');
 }
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

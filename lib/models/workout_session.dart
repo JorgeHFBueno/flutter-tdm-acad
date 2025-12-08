@@ -92,6 +92,8 @@ class WorkoutSession {
   final String workoutName;
   final String ownerUid;
   final DateTime? performedAt;
+  final DateTime? startAt;
+  final DateTime? endAt;
   final List<ExerciseExecution> exercises;
 
   WorkoutSession({
@@ -100,6 +102,8 @@ class WorkoutSession {
     required this.workoutName,
     required this.ownerUid,
     this.performedAt,
+    this.startAt,
+    this.endAt,
     required this.exercises,
   });
 
@@ -111,11 +115,15 @@ class WorkoutSession {
       'performedAt': performedAt != null
           ? Timestamp.fromDate(performedAt!)
           : FieldValue.serverTimestamp(),
+      'startAt': startAt != null ? Timestamp.fromDate(startAt!) : null,
+      'endAt': endAt != null ? Timestamp.fromDate(endAt!) : null,
       'exercises': exercises.map((e) => e.toMap()).toList(),
     };
   }
   factory WorkoutSession.fromMap(Map<String, dynamic> map, {String? id}) {
     final timestamp = map['performedAt'] as Timestamp?;
+    final startAtTimestamp = map['startAt'] as Timestamp?;
+    final endAtTimestamp = map['endAt'] as Timestamp?;
     final rawExercises = map['exercises'] as List<dynamic>? ?? [];
     return WorkoutSession(
       id: id,
@@ -123,6 +131,8 @@ class WorkoutSession {
       workoutName: map['workoutName']?.toString() ?? '',
       ownerUid: map['ownerUid']?.toString() ?? '',
       performedAt: timestamp?.toDate(),
+      startAt: startAtTimestamp?.toDate(),
+      endAt: endAtTimestamp?.toDate(),
       exercises: rawExercises
           .map((e) => ExerciseExecution.fromMap(Map<String, dynamic>.from(e)))
           .toList(),

@@ -18,10 +18,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
   late Map<String, ExerciseExecution> _executions;
   final WorkoutHistoryService _historyService = WorkoutHistoryService();
   bool _isSaving = false;
+  late DateTime _startAt;
 
   @override
   void initState() {
     super.initState();
+    _startAt = DateTime.now();
     _executions = {
       for (final exercise in widget.workout.exercises)
         exercise.name: ExerciseExecution(
@@ -329,6 +331,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen> {
       workoutId: widget.workout.id ?? '',
       workoutName: widget.workout.name,
       ownerUid: user.uid,
+      startAt: _startAt,
+      endAt: DateTime.now(),
+      performedAt: DateTime.now(),
       exercises: exercisesForSession,
     );
 
