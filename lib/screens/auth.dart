@@ -4,6 +4,7 @@ import '../menuOptions.dart';
 import 'home.dart';
 import 'login_or_register.dart';
 import 'workout_creation_screen.dart';
+import '../menu2.dart';
 
 class AuthScreen extends StatefulWidget{
   AuthScreen({super.key});
@@ -24,7 +25,7 @@ class AuthScreenState extends State<AuthScreen>{
         builder: (context,  snapshot){
           if (snapshot.hasData){
             //return MenuOptions();
-            return const WorkoutCreationScreen();
+            return const Menu2();
           }else{
             return LoginOrRegisterScreen();
           }

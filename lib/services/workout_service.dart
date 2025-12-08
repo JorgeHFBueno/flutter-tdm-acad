@@ -14,4 +14,15 @@ class WorkoutService {
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
+  Stream<List<Workout>> getWorkoutsForUser(String ownerUid) {
+    return _workouts
+        .where('ownerUid', isEqualTo: ownerUid)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+          .map((doc) => Workout.fromDocument(doc))
+          .toList(),
+    );
+  }
 }

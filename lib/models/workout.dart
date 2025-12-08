@@ -28,4 +28,17 @@ class Workout {
           : FieldValue.serverTimestamp(),
     };
   }
+  factory Workout.fromDocument(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final timestamp = data['createdAt'] as Timestamp?;
+
+    return Workout(
+      id: doc.id,
+      name: data['name'] as String? ?? '',
+      exercises: List<String>.from(data['exercises'] ?? const []),
+      ownerUid: data['ownerUid'] as String? ?? '',
+      ownerName: data['ownerName'] as String? ?? '',
+      createdAt: timestamp?.toDate(),
+    );
+  }
 }

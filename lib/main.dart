@@ -6,6 +6,7 @@ import 'screens/auth.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/workout_creation_screen.dart';
+import 'menu2.dart';
 
 const apiKey = 'AIzaSyCUCBtkXf_GPGwQUGprO3URA1c2lk918RM';
 void main() async{
@@ -37,6 +38,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => AuthScreen(),
+        '/menu': (context) => const Menu2(),
         '/workout': (context) => const WorkoutCreationScreen(),
       },
     );
