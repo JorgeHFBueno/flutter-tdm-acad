@@ -20,7 +20,8 @@ class HistoryScreen extends StatelessWidget {
         title: Text('Histórico'),
       ),
       body: const Center(
-        child: Text('Tela de histórico em construção'),
+        child: Text(
+            'Tela de histórico em construção (buscará workout_history por ownerUid).'),
       ),
     );
   }

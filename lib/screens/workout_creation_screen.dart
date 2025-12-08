@@ -20,10 +20,12 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
     "Desenvolvimento ombro",
   ];
 
-  final Set<String> _selectedExercises = {};
+  final Map<String, int> _selectedExercisesWithWeight = {};
   final TextEditingController _nameController = TextEditingController();
   final WorkoutService _workoutService = WorkoutService();
   bool _isSaving = false;
+  final List<int> _availableWeights =
+  List<int>.generate(19, (index) => 10 + index * 5);
 
   @override
   void dispose() {
@@ -43,7 +45,7 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
       return;
     }
 
-    if (_selectedExercises.isEmpty) {
+    if (_selectedExercisesWithWeight.isEmpty) {
       _showSnackBar('Selecione pelo menos um exercício');
       return;
     }
@@ -54,7 +56,14 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
 
     final workout = Workout(
       name: _nameController.text.trim(),
-      exercises: _selectedExercises.toList(),
+      exercises: _selectedExercisesWithWeight.entries
+          .map(
+            (entry) => WorkoutExercise(
+          name: entry.key,
+          defaultWeightKg: entry.value,
+        ),
+      )
+          .toList(),
       ownerUid: user.uid,
       ownerName: user.displayName ?? user.email ?? 'Usuário',
     );
@@ -63,7 +72,7 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
       await _workoutService.createWorkout(workout);
       _showSnackBar('Treino salvo com sucesso!');
       setState(() {
-        _selectedExercises.clear();
+        _selectedExercisesWithWeight.clear();
         _nameController.clear();
       });
     } catch (e) {
@@ -140,16 +149,38 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
               itemCount: _availableExercises.length,
               itemBuilder: (context, index) {
                 final exercise = _availableExercises[index];
-                final isSelected = _selectedExercises.contains(exercise);
+                final isSelected =
+                _selectedExercisesWithWeight.containsKey(exercise);
+                final selectedWeight =
+                    _selectedExercisesWithWeight[exercise] ?? 10;
                 return CheckboxListTile(
                   title: Text(exercise),
+                  subtitle: isSelected
+                      ? DropdownButton<int>(
+                    value: selectedWeight,
+                    items: _availableWeights
+                        .map(
+                          (weight) => DropdownMenuItem<int>(
+                        value: weight,
+                        child: Text('$weight kg'),
+                      ),
+                    )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value == null) return;
+                      setState(() {
+                        _selectedExercisesWithWeight[exercise] = value;
+                      });
+                    },
+                  )
+                      : null,
                   value: isSelected,
                   onChanged: (checked) {
                     setState(() {
                       if (checked == true) {
-                        _selectedExercises.add(exercise);
+                        _selectedExercisesWithWeight[exercise] = selectedWeight;
                       } else {
-                        _selectedExercises.remove(exercise);
+                        _selectedExercisesWithWeight.remove(exercise);
                       }
                     });
                   },

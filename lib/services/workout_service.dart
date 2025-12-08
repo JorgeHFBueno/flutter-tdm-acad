@@ -8,21 +8,25 @@ class WorkoutService {
   Future<void> createWorkout(Workout workout) async {
     await _workouts.add({
       'name': workout.name,
-      'exercises': workout.exercises,
+      'exercises': workout.exercises.map((e) => e.toMap()).toList(),
       'ownerUid': workout.ownerUid,
       'ownerName': workout.ownerName,
       'createdAt': FieldValue.serverTimestamp(),
     });
   }
+
+  Future<void> deleteWorkout(String id) async {
+    await _workouts.doc(id).delete();
+  }
+
   Stream<List<Workout>> getWorkoutsForUser(String ownerUid) {
     return _workouts
         .where('ownerUid', isEqualTo: ownerUid)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-          .map((doc) => Workout.fromDocument(doc))
-          .toList(),
+          (snapshot) =>
+          snapshot.docs.map((doc) => Workout.fromDocument(doc)).toList(),
     );
   }
 }
