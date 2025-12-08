@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "61080839736",
+    "project_id": "tdm-25-2",
+    "storage_bucket": "tdm-25-2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:61080839736:android:4160f7992d38a0a5a468cd",
+        "android_client_info": {
+          "package_name": "com.jrgbn.firebased"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCsWbgQBgwfG8m-jHRFbBs9deilsX3mHwc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

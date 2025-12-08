@@ -1,0 +1,30 @@
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "tdm-25-2",
+          "appId": "1:61080839736:android:4160f7992d38a0a5a468cd",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "tdm-25-2",
+          "configurations": {
+            "android": "1:61080839736:android:4160f7992d38a0a5a468cd",
+            "web": "1:61080839736:web:e22500d78f06d5eea468cd"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "n",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
