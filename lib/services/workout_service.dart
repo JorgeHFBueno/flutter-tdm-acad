@@ -19,6 +19,19 @@ class WorkoutService {
     await _workouts.doc(id).delete();
   }
 
+  Future<void> updateWorkout(Workout workout) async {
+    if (workout.id == null) {
+      throw ArgumentError('Workout ID não pode ser nulo para atualização');
+    }
+
+    await _workouts.doc(workout.id).update({
+      'name': workout.name,
+      'exercises': workout.exercises.map((e) => e.toMap()).toList(),
+      'ownerUid': workout.ownerUid,
+      'ownerName': workout.ownerName,
+    });
+  }
+
   Stream<List<Workout>> getWorkoutsForUser(String ownerUid) {
     return _workouts
         .where('ownerUid', isEqualTo: ownerUid)

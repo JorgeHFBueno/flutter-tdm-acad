@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../screens/workout_execution_screen.dart';
 import '../models/workout.dart';
 import '../services/workout_service.dart';
+import 'workout_edit_screen.dart';
 
 class WorkoutListScreen extends StatelessWidget {
   const WorkoutListScreen({super.key, this.embedInScaffold = true});
@@ -115,9 +116,9 @@ class WorkoutListScreen extends StatelessWidget {
                 title: const Text('Editar'),
                 onTap: () {
                   Navigator.of(ctx).pop();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Edição ainda não implementada'),
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => WorkoutEditScreen(workout: workout),
                     ),
                   );
                 },
