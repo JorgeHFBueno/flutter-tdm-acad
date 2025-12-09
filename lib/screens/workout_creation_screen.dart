@@ -12,13 +12,45 @@ class WorkoutCreationScreen extends StatefulWidget {
 }
 
 class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
-  final List<String> _availableExercises = const [
-    "Supino reto (máquina)",
-    "Puxada frente",
-    "Leg press 45º",
-    "Remada baixa",
-    "Desenvolvimento ombro",
-  ];
+  static const List<String> _categories = ['Perna', 'Peito', 'Costas'];
+
+  final Map<String, List<String>> _exercisesByCategory = const {
+    'Perna': [
+      'Abdutor (abre)',
+      'Adutor (fecha)',
+      'Agachamento',
+      'Aquecimento na esteira 1km',
+      'Extensora',
+      'Leg 45°',
+      'Mesa flexora',
+      'Panturrilha na cadeira',
+    ],
+    'Peito': [
+      'Abdominal inclinado',
+      'Aquecimento',
+      'Elevação lateral com halteres',
+      'Ombro máquina',
+      'Peitoral robô',
+      'Supino Simples',
+      'Supino inclinado com halteres',
+      'Triceps Barra',
+      'Triceps Corda',
+      'Voador',
+    ],
+    'Costas': [
+      '"ABS Invertido"',
+      '"ABS Perna"',
+      'Aquecimento',
+      'Antebraço barra',
+      'Barra W',
+      'Biceps Halters',
+      'Biceps cadeira',
+      'Dorsal na máquina',
+      'Encolhimento',
+      'Puxada alta com a barra',
+      'Remada baixa',
+    ],
+  };
 
   final Map<String, int> _selectedExercisesWithWeight = {};
   final TextEditingController _nameController = TextEditingController();
@@ -26,6 +58,7 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
   bool _isSaving = false;
   final List<int> _availableWeights =
   List<int>.generate(19, (index) => 10 + index * 5);
+  String _selectedCategory = _categories.first;
 
   @override
   void dispose() {
@@ -59,9 +92,10 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
       exercises: _selectedExercisesWithWeight.entries
           .map(
             (entry) => WorkoutExercise(
-          name: entry.key,
-          defaultWeightKg: entry.value,
-        ),
+              name: entry.key,
+              defaultWeightKg: entry.value,
+              category: _getCategoryForExercise(entry.key),
+            ),
       )
           .toList(),
       ownerUid: user.uid,
@@ -137,6 +171,31 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
+            'Filtrar por grupo muscular:',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: _categories
+                .map(
+                  (category) => ChoiceChip(
+                label: Text(category),
+                selected: _selectedCategory == category,
+                onSelected: (_) {
+                  setState(() {
+                    _selectedCategory = category;
+                  });
+                },
+              ),
+            )
+                .toList(),
+          ),
+          const SizedBox(height: 16),
+          const Text(
             'Escolha os exercícios:',
             style: TextStyle(
               fontSize: 16,
@@ -146,13 +205,11 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
           const SizedBox(height: 8),
           Expanded(
             child: ListView.builder(
-              itemCount: _availableExercises.length,
+              itemCount: _exercisesByCategory[_selectedCategory]?.length ?? 0,
               itemBuilder: (context, index) {
-                final exercise = _availableExercises[index];
-                final isSelected =
-                _selectedExercisesWithWeight.containsKey(exercise);
-                final selectedWeight =
-                    _selectedExercisesWithWeight[exercise] ?? 10;
+                final exercise = _exercisesByCategory[_selectedCategory]![index];
+                final isSelected = _selectedExercisesWithWeight.containsKey(exercise);
+                final selectedWeight = _selectedExercisesWithWeight[exercise] ?? 10;
                 return CheckboxListTile(
                   title: Text(exercise),
                   subtitle: isSelected
@@ -207,5 +264,13 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
         ],
       ),
     );
+  }
+  String? _getCategoryForExercise(String exerciseName) {
+    for (final entry in _exercisesByCategory.entries) {
+      if (entry.value.contains(exerciseName)) {
+        return entry.key;
+      }
+    }
+    return null;
   }
 }

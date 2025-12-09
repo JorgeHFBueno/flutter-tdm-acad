@@ -3,21 +3,25 @@ import "package:cloud_firestore/cloud_firestore.dart";
 class WorkoutExercise {
   final String name;
   final int defaultWeightKg;
+  final String? category;
 
   WorkoutExercise({
     required this.name,
     required this.defaultWeightKg,
+    this.category,
   });
 
   Map<String, dynamic> toMap() => {
     'name': name,
     'defaultWeightKg': defaultWeightKg,
+    'category': category,
   };
 
   factory WorkoutExercise.fromMap(Map<String, dynamic> map) {
     return WorkoutExercise(
       name: map['name']?.toString() ?? '',
       defaultWeightKg: (map['defaultWeightKg'] ?? 0) as int,
+      category: map['category']?.toString(),
     );
   }
 }
