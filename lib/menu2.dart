@@ -47,7 +47,7 @@ class _Menu2State extends State<Menu2> {
       ),
       _MenuPage(
         title: 'Histórico',
-        builder: () => const HistoryScreen(embedInScaffold: false),
+        builder: () => const HistoryScreen(),
         icon: Icons.history,
       ),
     ];

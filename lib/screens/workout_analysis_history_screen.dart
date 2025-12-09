@@ -29,9 +29,9 @@ class WorkoutAnalysisHistoryScreen extends StatelessWidget {
           }
 
           if (snapshot.hasError) {
+            print('Erro ao carregar histórico de análises da IA: ${snapshot.error}');
             return const Center(
-              child:
-              Text('Erro ao carregar histórico de análises da IA.'),
+              child: Text('Erro ao carregar histórico de análises da IA.'),
             );
           }
 
