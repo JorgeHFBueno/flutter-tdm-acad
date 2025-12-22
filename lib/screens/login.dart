@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'auth.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '/components/my_button.dart';
 import '/components/my_textfield.dart';
 import '/components/square_tile.dart';
+import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function()? onTap;
@@ -18,12 +20,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class LoginScreenState extends State<LoginScreen> {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
-  Future<void> _handleSignIn() async {
+  void _showLoading() {
     // loading
     showDialog(
       context: context,
@@ -32,16 +34,26 @@ class LoginScreenState extends State<LoginScreen> {
         child: CircularProgressIndicator(color: Color(0xffE01C2F)),
       ),
     );
+  }
+
+  void _hideLoading() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _handleSignIn() async {
+    _showLoading();
 
     try {
-      await _auth.signInWithEmailAndPassword(
+      await _authService.signInWithEmail(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
       // fecha o loading; NÃO navega — AuthScreen já troca para MenuOptions
-      Navigator.of(context).pop();
+      _hideLoading();
     } on FirebaseAuthException catch (e) {
-      Navigator.of(context).pop();
+      _hideLoading();
       if (e.code == 'invalid-credential') {
         _genericErrorMessage('Credenciais inválidas, tente novamente!');
       } else if (e.code == 'invalid-email') {
@@ -54,50 +66,53 @@ class LoginScreenState extends State<LoginScreen> {
         _genericErrorMessage(e.message ?? e.code);
       }
     } catch (e) {
-      Navigator.of(context).pop();
+      _hideLoading();
       _genericErrorMessage(e.toString());
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
     // loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: Color(0xffE01C2F)),
-      ),
-    );
+    _showLoading();
 
     try {
-      if (kIsWeb) {
-        // WEB: popup do Firebase
-        final provider = GoogleAuthProvider()..addScope('email');
-        await _auth.signInWithPopup(provider);
-      } else {
-        // ANDROID / iOS
-        final googleUser = await GoogleSignIn().signIn();
-        if (googleUser == null) {
-          // usuário cancelou
-          Navigator.of(context).pop();
-          return;
-        }
-        final googleAuth = await googleUser.authentication;
-        final credential = GoogleAuthProvider.credential(
-          accessToken: googleAuth.accessToken,
-          idToken: googleAuth.idToken,
-        );
-        await _auth.signInWithCredential(credential);
-      }
-
-      // fecha o loading; AuthScreen redireciona sozinho
-      Navigator.of(context).pop();
+      await _authService.signInWithGoogle();
+      _hideLoading();
+    } on AuthServiceException catch (e) {
+      _hideLoading();
+      _genericErrorMessage(_mapAuthServiceError(e));
     } on FirebaseAuthException catch (e) {
-      Navigator.of(context).pop();
-      _genericErrorMessage(e.message ?? 'Falha no login com Google');
+      _hideLoading();
+      _genericErrorMessage(_mapFirebaseAuthError(e));
     } catch (e) {
-      Navigator.of(context).pop();
+      _hideLoading();
       _genericErrorMessage(e.toString());
+    }
+  }
+
+  String _mapAuthServiceError(AuthServiceException error) {
+    switch (error.code) {
+      case 'user-cancelled':
+        return 'Login cancelado pelo usuário.';
+      case 'invalid-credential':
+        return 'Credenciais inválidas.';
+      case 'configuration-not-found':
+        return 'Configuração do Google Sign-In ausente.';
+      default:
+        return error.message;
+    }
+  }
+
+  String _mapFirebaseAuthError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'network-request-failed':
+        return 'Falha de rede. Verifique sua conexão.';
+      case 'invalid-credential':
+        return 'Credenciais inválidas.';
+      case 'operation-not-allowed':
+        return 'Configuração do Google Sign-In ausente.';
+      default:
+        return error.message ?? 'Falha no login com Google.';
     }
   }
 
@@ -187,15 +202,28 @@ class LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
 
                 // Google button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SquareTile(
-                      onTap: _handleGoogleSignIn, // <-- aqui a mudança
-                      imagePath: 'assets/icons/google.svg',
-                      height: 70,
-                    )
-                  ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 25),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _handleGoogleSignIn,
+                      icon: SvgPicture.asset(
+                        'assets/icons/google.svg',
+                        height: 22,
+                      ),
+                      label: const Text('Entrar com Google'),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
+                        side: BorderSide(color: Colors.grey.shade300),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 30),
 

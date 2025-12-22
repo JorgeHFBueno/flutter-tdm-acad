@@ -1,13 +1,4 @@
-import 'package:firebased/screens/chat.dart';
 import 'package:flutter/material.dart';
-import 'screens/home.dart';
-import 'screens/vocesabia.dart';
-import 'screens/mapa_list.dart';
-import 'screens/chat.dart';
-import 'screens/image_labeling.dart';
-import 'screens/translation.dart';
-import 'screens/chat_screen.dart';
-import 'screens/mapa.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/workout_creation_screen.dart';
@@ -29,10 +20,10 @@ class _Menu2State extends State<Menu2> {
   void initState() {
     super.initState();
     _pages = [
-    _MenuPage(
-    title: 'Início',
-    builder: () => HomeScreen(embedInScaffold: false),
-    icon: Icons.home,
+      _MenuPage(
+        title: 'Início',
+        builder: () => HomeScreen(embedInScaffold: false),
+        icon: Icons.home,
       ),
 
       _MenuPage(

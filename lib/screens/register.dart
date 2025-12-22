@@ -5,6 +5,8 @@ import 'auth.dart';
 import '/components/my_button.dart';
 import '/components/my_textfield.dart';
 import '/components/square_tile.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import '../services/auth_service.dart';
 
 
 class RegisterScreen extends StatefulWidget {
@@ -19,6 +21,7 @@ class RegisterScreen extends StatefulWidget {
 
 class RegisterScreenState extends State<RegisterScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -26,15 +29,27 @@ class RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _confirmPasswordController =
   TextEditingController();
 
-  void _handleSignUp() async {
+  void _showLoading() {
     // show loading circle
     showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (context) {
           return const Center(
             child: CircularProgressIndicator(color: Color(0xffE01C2F)),
           );
         });
+  }
+
+  void _hideLoading() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.pop(context);
+    }
+  }
+
+  void _handleSignUp() async {
+    // show loading circle
+    _showLoading();
 
     try {
       // check if both password and confirm password is same
@@ -47,7 +62,7 @@ class RegisterScreenState extends State<RegisterScreen> {
         print('Usuário ${userCredential.user!.email} registrado!');
 
         // pop the loading circle
-        Navigator.pop(context);
+        _hideLoading();
 
         // save to users collection
         final CollectionReference _users =
@@ -61,17 +76,19 @@ class RegisterScreenState extends State<RegisterScreen> {
         });
         // go to home screen
         Navigator.push(
-            context, MaterialPageRoute(builder: (context) => AuthScreen()));
+          context,
+          MaterialPageRoute(builder: (context) => AuthScreen()),
+        );
       } else {
         // pop the loading circle
-        Navigator.pop(context);
+        _hideLoading();
 
         // show error password don't match
         genericErrorMessage("As senhas não correspondem!");
       }
     } on FirebaseAuthException catch (e) {
       // pop the loading circle
-      Navigator.pop(context);
+      _hideLoading();
 
       // show errors messsages
       if (e.code == 'weak-password') {
@@ -84,6 +101,50 @@ class RegisterScreenState extends State<RegisterScreen> {
         // another error
         genericErrorMessage(e.code);
       }
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    _showLoading();
+
+    try {
+      await _authService.signInWithGoogle();
+      _hideLoading();
+    } on AuthServiceException catch (e) {
+      _hideLoading();
+      genericErrorMessage(_mapAuthServiceError(e));
+    } on FirebaseAuthException catch (e) {
+      _hideLoading();
+      genericErrorMessage(_mapFirebaseAuthError(e));
+    } catch (e) {
+      _hideLoading();
+      genericErrorMessage(e.toString());
+    }
+  }
+
+  String _mapAuthServiceError(AuthServiceException error) {
+    switch (error.code) {
+      case 'user-cancelled':
+        return 'Login cancelado pelo usuário.';
+      case 'invalid-credential':
+        return 'Credenciais inválidas.';
+      case 'configuration-not-found':
+        return 'Configuração do Google Sign-In ausente.';
+      default:
+        return error.message;
+    }
+  }
+
+  String _mapFirebaseAuthError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'network-request-failed':
+        return 'Falha de rede. Verifique sua conexão.';
+      case 'invalid-credential':
+        return 'Credenciais inválidas.';
+      case 'operation-not-allowed':
+        return 'Configuração do Google Sign-In ausente.';
+      default:
+        return error.message ?? 'Falha no login com Google.';
     }
   }
 
@@ -192,15 +253,28 @@ class RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 20),
 
                 //google button
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    SquareTile(
-                      onTap: () => Container(),
-                      imagePath: 'assets/icons/google.svg',
-                      height: 70,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 25),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _handleGoogleSignIn,
+                  icon: SvgPicture.asset(
+                    'assets/icons/google.svg',
+                    height: 22,
+                  ),
+                  label: const Text('Entrar com Google'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    side: BorderSide(color: Colors.grey),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  ],
+                  ),
+                    ),
+              ),
                 ),
                 const SizedBox(height: 30),
 

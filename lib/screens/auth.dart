@@ -1,10 +1,8 @@
-import "package:firebase_auth/firebase_auth.dart";
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../menuOptions.dart';
-import 'home.dart';
 import 'login_or_register.dart';
-import 'workout_creation_screen.dart';
 import '../menu2.dart';
+import '../services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget{
   AuthScreen({super.key});
@@ -15,13 +13,13 @@ class AuthScreen extends StatefulWidget{
 }
 
 class AuthScreenState extends State<AuthScreen>{
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: StreamBuilder<User?>(
-        stream: _auth.authStateChanges(),
+        stream: _authService.authStateChanges,
         builder: (context,  snapshot){
           if (snapshot.hasData){
             //return MenuOptions();

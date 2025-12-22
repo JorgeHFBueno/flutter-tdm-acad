@@ -231,7 +231,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       List<WorkoutSession> sessions, String workoutName) {
     final buffer = StringBuffer()
       ..writeln(
-          'Você é um treinador de musculação. Analise o histórico de treinos abaixo para o aluno. Considere os exercícios, número de séries, repetições, cargas (kg) e o estado subjetivo final ("certo", "leve", "fadiga") em cada sessão. Sugira, de forma objetiva, se deve trocar a ordem dos exercícios, aumentar ou diminuir peso ou séries para cada exercício, levando em conta sobrecarga progressiva, recuperação e fadiga.')
+          'Você é um treinador de musculação. Analise o histórico de treinos abaixo para o aluno. '
+              'Considere os exercícios, número de séries, repetições, cargas (kg) e o estado subjetivo final ("certo", "leve", "fadiga")'
+              ' em cada sessão. Sugira, de forma objetiva, se deve trocar a ordem dos exercícios, aumentar ou diminuir peso ou séries para cada exercício,'
+              ' levando em conta sobrecarga progressiva, recuperação e fadiga.')
       ..writeln()
       ..writeln('Histórico do treino "$workoutName":');
 
