@@ -1,12 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:google_sign_in/google_sign_in.dart';
-import 'auth.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '/components/my_button.dart';
 import '/components/my_textfield.dart';
-import '/components/square_tile.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {

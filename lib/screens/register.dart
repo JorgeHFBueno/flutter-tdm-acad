@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'auth.dart';
 import '/components/my_button.dart';
 import '/components/my_textfield.dart';
-import '/components/square_tile.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 
