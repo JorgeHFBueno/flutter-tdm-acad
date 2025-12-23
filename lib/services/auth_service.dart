@@ -49,13 +49,14 @@ class AuthService {
   }
 
   Future<UserCredential> signInWithGoogle() async {
+    GoogleSignInAccount? googleUser;
     try {
       UserCredential credential;
       if (kIsWeb) {
         final provider = GoogleAuthProvider()..addScope('email');
         credential = await _auth.signInWithPopup(provider);
       } else {
-        final googleUser = await _googleSignIn.signIn();
+        googleUser = await _googleSignIn.signIn();
         if (googleUser == null) {
           throw AuthServiceException(
             'user-cancelled',
@@ -82,6 +83,11 @@ class AuthService {
       );
 
       return credential;
+    } on FirebaseAuthException catch (e) {
+      throw AuthServiceException(
+        e.code,
+        e.message ?? 'Falha no login com Google.',
+      );
     } on PlatformException catch (e) {
       if (e.code == 'sign_in_canceled') {
         throw AuthServiceException(
@@ -93,6 +99,17 @@ class AuthService {
         'configuration-not-found',
         'Configuração do Google Sign-In ausente.',
       );
+    } catch (e) {
+      throw AuthServiceException(
+        'unknown',
+        'Falha inesperada no login com Google.',
+      );
+    } finally {
+      if (!kIsWeb && googleUser == null) {
+        try {
+          await _googleSignIn.signOut();
+        } catch (_) {}
+      }
     }
   }
 }

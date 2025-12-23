@@ -7,7 +7,6 @@ import '/components/my_textfield.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 
-
 class RegisterScreen extends StatefulWidget {
   final Function()? onTap;
   RegisterScreen({super.key, required this.onTap});
@@ -26,52 +25,37 @@ class RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
-  TextEditingController();
+      TextEditingController();
+  bool _isLoading = false;
 
-  void _showLoading() {
-    // show loading circle
-    showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) {
-          return const Center(
-            child: CircularProgressIndicator(color: Color(0xffE01C2F)),
-          );
-        });
-  }
-
-  void _hideLoading() {
-    if (Navigator.of(context).canPop()) {
-      Navigator.pop(context);
+  Future<void> _handleSignUp() async {
+    if (_isLoading) {
+      return;
     }
-  }
 
-  void _handleSignUp() async {
-    // show loading circle
-    _showLoading();
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       // check if both password and confirm password is same
       if (_passwordController.text == _confirmPasswordController.text) {
         UserCredential userCredential =
-        await _auth.createUserWithEmailAndPassword(
+            await _auth.createUserWithEmailAndPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
         print('Usuário ${userCredential.user!.email} registrado!');
 
-        // pop the loading circle
-        _hideLoading();
-
         // save to users collection
         final CollectionReference _users =
-        FirebaseFirestore.instance.collection('users');
+            FirebaseFirestore.instance.collection('users');
         await _users.doc(userCredential.user!.uid).set({
           'uid': userCredential.user!.uid,
           'displayName': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'photoURL':
-          'https://ui-avatars.com/api/?name=${_nameController.text}&background=E01C2F&color=fff'
+              'https://ui-avatars.com/api/?name=${_nameController.text}&background=E01C2F&color=fff'
         });
         // go to home screen
         Navigator.push(
@@ -79,16 +63,10 @@ class RegisterScreenState extends State<RegisterScreen> {
           MaterialPageRoute(builder: (context) => AuthScreen()),
         );
       } else {
-        // pop the loading circle
-        _hideLoading();
-
         // show error password don't match
         genericErrorMessage("As senhas não correspondem!");
       }
     } on FirebaseAuthException catch (e) {
-      // pop the loading circle
-      _hideLoading();
-
       // show errors messsages
       if (e.code == 'weak-password') {
         genericErrorMessage('A senha é muito fraca, tente novamente!');
@@ -100,24 +78,44 @@ class RegisterScreenState extends State<RegisterScreen> {
         // another error
         genericErrorMessage(e.code);
       }
+    } catch (e) {
+      genericErrorMessage(e.toString());
+    } finally {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    _showLoading();
+    if (_isLoading) {
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       await _authService.signInWithGoogle();
-      _hideLoading();
     } on AuthServiceException catch (e) {
-      _hideLoading();
-      genericErrorMessage(_mapAuthServiceError(e));
+      if (e.code != 'user-cancelled') {
+        genericErrorMessage(_mapAuthServiceError(e));
+      }
     } on FirebaseAuthException catch (e) {
-      _hideLoading();
       genericErrorMessage(_mapFirebaseAuthError(e));
     } catch (e) {
-      _hideLoading();
       genericErrorMessage(e.toString());
+    } finally {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -148,6 +146,9 @@ class RegisterScreenState extends State<RegisterScreen> {
   }
 
   void genericErrorMessage(String message) {
+    if (!mounted) {
+      return;
+    }
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
@@ -157,150 +158,165 @@ class RegisterScreenState extends State<RegisterScreen> {
     return Scaffold(
       backgroundColor: Color.fromARGB(255, 243, 243, 243),
       resizeToAvoidBottomInset: true,
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 50),
-                SizedBox(
-                  height: 100,
-                  child: ClipOval(child: Image.asset('assets/logos/logo.jpg')),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Por favor, preenchar os seus dados para continuar. ',
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 25),
-
-                MyTextField(
-                  controller: _nameController,
-                  hintText: 'Nome completo',
-                  icon: Icon(Icons.person_outline),
-                  obscureText: false,
-                  capitalization: true,
-                ),
-                const SizedBox(height: 15),
-
-                MyTextField(
-                  controller: _emailController,
-                  hintText: 'Email',
-                  icon: Icon(Icons.email_outlined),
-                  obscureText: false,
-                  capitalization: false,
-                ),
-                const SizedBox(height: 15),
-
-                MyTextField(
-                  controller: _passwordController,
-                  hintText: 'Senha',
-                  icon: Icon(Icons.lock_outline),
-                  obscureText: true,
-                  capitalization: false,
-                ),
-                const SizedBox(height: 15),
-
-                MyTextField(
-                  controller: _confirmPasswordController,
-                  hintText: 'Confirmar senha',
-                  icon: Icon(Icons.shield_outlined),
-                  obscureText: true,
-                  capitalization: false,
-                ),
-                const SizedBox(height: 15),
-
-                MyButton(
-                  onPressed: _handleSignUp,
-                  formKey: _formKey,
-                  text: 'Registrar',
-                ),
-                const SizedBox(height: 20),
-
-                // continue with
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, right: 8),
-                        child: Text(
-                          'OU',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                //google button
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 25),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: _handleGoogleSignIn,
-                  icon: SvgPicture.asset(
-                    'assets/icons/google.svg',
-                    height: 22,
-                  ),
-                  label: const Text('Entrar com Google'),
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black87,
-                    side: BorderSide(color: Colors.grey),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                    ),
-              ),
-                ),
-                const SizedBox(height: 30),
-
-                // already a member? login now
-                Row(
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Center(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Já possui uma conta? ',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    const SizedBox(height: 50),
+                    SizedBox(
+                      height: 100,
+                      child:
+                          ClipOval(child: Image.asset('assets/logos/logo.jpg')),
                     ),
-                    GestureDetector(
-                      onTap: widget.onTap,
-                      child: Text(
-                        'Faça login',
-                        style: TextStyle(
-                            color: Color(0xffE01C2F),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Por favor, preenchar os seus dados para continuar. ',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 16,
                       ),
                     ),
+                    const SizedBox(height: 25),
+
+                    MyTextField(
+                      controller: _nameController,
+                      hintText: 'Nome completo',
+                      icon: Icon(Icons.person_outline),
+                      obscureText: false,
+                      capitalization: true,
+                    ),
+                    const SizedBox(height: 15),
+
+                    MyTextField(
+                      controller: _emailController,
+                      hintText: 'Email',
+                      icon: Icon(Icons.email_outlined),
+                      obscureText: false,
+                      capitalization: false,
+                    ),
+                    const SizedBox(height: 15),
+
+                    MyTextField(
+                      controller: _passwordController,
+                      hintText: 'Senha',
+                      icon: Icon(Icons.lock_outline),
+                      obscureText: true,
+                      capitalization: false,
+                    ),
+                    const SizedBox(height: 15),
+
+                    MyTextField(
+                      controller: _confirmPasswordController,
+                      hintText: 'Confirmar senha',
+                      icon: Icon(Icons.shield_outlined),
+                      obscureText: true,
+                      capitalization: false,
+                    ),
+                    const SizedBox(height: 15),
+
+                    MyButton(
+                      onPressed: _isLoading ? null : _handleSignUp,
+                      formKey: _formKey,
+                      text: 'Registrar',
+                    ),
+                    const SizedBox(height: 20),
+
+                    // continue with
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              thickness: 0.5,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 8),
+                            child: Text(
+                              'OU',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              thickness: 0.5,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    //google button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _handleGoogleSignIn,
+                          icon: SvgPicture.asset(
+                            'assets/icons/google.svg',
+                            height: 22,
+                          ),
+                          label: const Text('Entrar com Google'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                            side: BorderSide(color: Colors.grey),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 30),
+
+                    // already a member? login now
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Já possui uma conta? ',
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                        GestureDetector(
+                          onTap: widget.onTap,
+                          child: Text(
+                            'Faça login',
+                            style: TextStyle(
+                                color: Color(0xffE01C2F),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    )
                   ],
-                )
-              ],
+                ),
+              ),
             ),
           ),
-        ),
+          if (_isLoading)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black38,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Color(0xffE01C2F)),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

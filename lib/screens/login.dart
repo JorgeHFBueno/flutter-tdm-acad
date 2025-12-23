@@ -20,26 +20,15 @@ class LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
-  void _showLoading() {
-    // loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: Color(0xffE01C2F)),
-      ),
-    );
-  }
-
-  void _hideLoading() {
-    if (Navigator.of(context).canPop()) {
-      Navigator.of(context).pop();
-    }
-  }
+  bool _isLoading = false;
 
   Future<void> _handleSignIn() async {
-    _showLoading();
+    if (_isLoading) {
+      return;
+    }
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
       await _authService.signInWithEmail(
@@ -47,9 +36,7 @@ class LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text,
       );
       // fecha o loading; NÃO navega — AuthScreen já troca para MenuOptions
-      _hideLoading();
     } on FirebaseAuthException catch (e) {
-      _hideLoading();
       if (e.code == 'invalid-credential') {
         _genericErrorMessage('Credenciais inválidas, tente novamente!');
       } else if (e.code == 'invalid-email') {
@@ -62,27 +49,43 @@ class LoginScreenState extends State<LoginScreen> {
         _genericErrorMessage(e.message ?? e.code);
       }
     } catch (e) {
-      _hideLoading();
       _genericErrorMessage(e.toString());
+    } finally {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
     // loading
-    _showLoading();
+    if (_isLoading) {
+      return;
+    }
 
+    setState(() {
+      _isLoading = true;
+    });
     try {
       await _authService.signInWithGoogle();
-      _hideLoading();
     } on AuthServiceException catch (e) {
-      _hideLoading();
-      _genericErrorMessage(_mapAuthServiceError(e));
+      if (e.code != 'user-cancelled') {
+        _genericErrorMessage(_mapAuthServiceError(e));
+      }
     } on FirebaseAuthException catch (e) {
-      _hideLoading();
       _genericErrorMessage(_mapFirebaseAuthError(e));
     } catch (e) {
-      _hideLoading();
       _genericErrorMessage(e.toString());
+    } finally {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 
@@ -113,7 +116,11 @@ class LoginScreenState extends State<LoginScreen> {
   }
 
   void _genericErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    if (!mounted) {
+      return;
+    }
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -121,133 +128,149 @@ class LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 243, 243, 243),
       resizeToAvoidBottomInset: true,
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const SizedBox(height: 50),
-                SizedBox(
-                  height: 100,
-                  child: ClipOval(child: Image.asset('assets/logos/logo.jpg')),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Olá, efetue o login para continuar. ',
-                  style: TextStyle(
-                    color: Colors.grey[700],
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 25),
-
-                MyTextField(
-                  controller: _emailController,
-                  hintText: 'Email',
-                  icon: const Icon(Icons.email_outlined),
-                  obscureText: false,
-                  capitalization: false,
-                ),
-                const SizedBox(height: 15),
-
-                MyTextField(
-                  controller: _passwordController,
-                  hintText: 'Senha',
-                  icon: const Icon(Icons.lock_outline),
-                  obscureText: true,
-                  capitalization: false,
-                ),
-                const SizedBox(height: 15),
-
-                MyButton(
-                  onPressed: _handleSignIn,
-                  formKey: _formKey,
-                  text: 'Logar',
-                ),
-                const SizedBox(height: 20),
-
-                // continue with
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, right: 8),
-                        child: Text(
-                          'OU',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ),
-                      Expanded(
-                        child: Divider(
-                          thickness: 0.5,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Google button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: _handleGoogleSignIn,
-                      icon: SvgPicture.asset(
-                        'assets/icons/google.svg',
-                        height: 22,
-                      ),
-                      label: const Text('Entrar com Google'),
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black87,
-                        side: BorderSide(color: Colors.grey.shade300),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // not a member? register now
-                Row(
+      body: Stack(
+        children: [
+          Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              child: Center(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      'Novo por aqui? ',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                    const SizedBox(height: 50),
+                    SizedBox(
+                      height: 100,
+                      child: ClipOval(
+                        child: Image.asset('assets/logos/logo.jpg'),
+                      ),
                     ),
-                    GestureDetector(
-                      onTap: widget.onTap,
-                      child: const Text(
-                        'Registre-se',
-                        style: TextStyle(
-                          color: Color(0xffE01C2F),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
+                    const SizedBox(height: 10),
+                    Text(
+                      'Olá, efetue o login para continuar. ',
+                      style: TextStyle(
+                        color: Colors.grey[700],
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 25),
+
+                    MyTextField(
+                      controller: _emailController,
+                      hintText: 'Email',
+                      icon: const Icon(Icons.email_outlined),
+                      obscureText: false,
+                      capitalization: false,
+                    ),
+                    const SizedBox(height: 15),
+
+                    MyTextField(
+                      controller: _passwordController,
+                      hintText: 'Senha',
+                      icon: const Icon(Icons.lock_outline),
+                      obscureText: true,
+                      capitalization: false,
+                    ),
+                    const SizedBox(height: 15),
+
+                    MyButton(
+                      onPressed: _isLoading ? null : _handleSignIn,
+                      formKey: _formKey,
+                      text: 'Logar',
+                    ),
+                    const SizedBox(height: 20),
+
+                    // continue with
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              thickness: 0.5,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8, right: 8),
+                            child: Text(
+                              'OU',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              thickness: 0.5,
+                              color: Colors.grey.shade400,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Google button
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _isLoading ? null : _handleGoogleSignIn,
+                          icon: SvgPicture.asset(
+                            'assets/icons/google.svg',
+                            height: 22,
+                          ),
+                          label: const Text('Entrar com Google'),
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            backgroundColor: Colors.white,
+                            foregroundColor: Colors.black87,
+                            side: BorderSide(color: Colors.grey.shade300),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                    const SizedBox(height: 30),
+
+                    // not a member? register now
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Novo por aqui? ',
+                          style:
+                              TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                        GestureDetector(
+                          onTap: widget.onTap,
+                          child: const Text(
+                            'Registre-se',
+                            style: TextStyle(
+                              color: Color(0xffE01C2F),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
                   ],
-                )
-              ],
+                ),
+              ),
             ),
           ),
-        ),
+          if (_isLoading)
+            Positioned.fill(
+              child: ColoredBox(
+                color: Colors.black38,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Color(0xffE01C2F)),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

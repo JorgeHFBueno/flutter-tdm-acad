@@ -33,20 +33,20 @@ Future<void> main() async {
   }
 
   // 4) Push notifications
-  await _setupPushNotifications();
+  // await _setupPushNotifications();
 
   // 5) Sobe o app
   runApp(const MyApp());
 }
 
-Future<void> _setupPushNotifications() async {
+/* Future<void> _setupPushNotifications() async {
   print('_setupPushNotifications (main) iniciou');
   final fcm = FirebaseMessaging.instance;
   await fcm.requestPermission();
   final token = await fcm.getToken();
   print('FCM token (main): $token');
   print('_setupPushNotifications (main) terminou');
-}
+} */
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

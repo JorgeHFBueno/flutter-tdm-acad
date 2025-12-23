@@ -27,11 +27,13 @@ class MyButtonState extends State<MyButton> {
         height: 55,
         width: double.maxFinite,
         child: ElevatedButton(
-          onPressed: () {
-            if (widget.formKey.currentState!.validate()) {
-              widget.onPressed!();
-            }
-          },
+          onPressed: widget.onPressed == null
+              ? null
+              : () {
+                  if (widget.formKey.currentState!.validate()) {
+                    widget.onPressed!();
+                  }
+                },
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.all(18),
             backgroundColor: Colors.teal,
