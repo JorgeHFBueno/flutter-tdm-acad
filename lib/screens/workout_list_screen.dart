@@ -1,97 +1,110 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../screens/workout_execution_screen.dart';
+
+import '../models/machine_history.dart';
 import '../models/workout.dart';
+import '../models/workout_machine_resolution.dart';
+import '../screens/workout_execution_screen.dart';
+import '../services/machine_history_service.dart';
 import '../services/workout_service.dart';
 import 'workout_edit_screen.dart';
 
-class WorkoutListScreen extends StatelessWidget {
+class WorkoutListScreen extends StatefulWidget {
   const WorkoutListScreen({super.key, this.embedInScaffold = true});
 
   final bool embedInScaffold;
-  WorkoutService get _workoutService => WorkoutService();
+
+  @override
+  State<WorkoutListScreen> createState() => _WorkoutListScreenState();
+}
+
+class _WorkoutListScreenState extends State<WorkoutListScreen> {
+  final WorkoutService _workoutService = const WorkoutService();
+  final MachineService _machineService = const MachineService();
+  late final String? _uid;
+  late final Stream<List<Workout>>? _workoutsStream;
+  late final Stream<List<MachineProfile>>? _machinesStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _uid = FirebaseAuth.instance.currentUser?.uid;
+    _workoutsStream =
+        _uid == null ? null : _workoutService.getWorkoutsForUser(_uid);
+    _machinesStream = _uid == null ? null : _machineService.watchForUser(_uid);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+    final content = _uid == null
+        ? const Center(child: Text('Usuario nao autenticado'))
+        : _buildStreams();
 
-    if (user == null) {
-      return _wrapContent(
-        const Center(child: Text('Usuário não autenticado')),
-      );
+    if (!widget.embedInScaffold) {
+      return Padding(padding: const EdgeInsets.all(8), child: content);
     }
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lista de treinos')),
+      body: Padding(padding: const EdgeInsets.all(8), child: content),
+    );
+  }
 
-    final content = StreamBuilder<List<Workout>>(
-      stream: WorkoutService().getWorkoutsForUser(user.uid),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+  Widget _buildStreams() {
+    return StreamBuilder<List<Workout>>(
+      stream: _workoutsStream,
+      builder: (context, workoutSnapshot) {
+        if (workoutSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-
-        if (snapshot.hasError) {
+        if (workoutSnapshot.hasError) {
           return const Center(child: Text('Erro ao carregar treinos.'));
         }
-
-        final workouts = snapshot.data ?? [];
-        if (workouts.isEmpty) {
-          return const Center(
-            child: Text('Você ainda não cadastrou nenhum treino.'),
-          );
-        }
-
-        return ListView.builder(
-          itemCount: workouts.length,
-          itemBuilder: (context, index) {
-            final workout = workouts[index];
-            return ListTile(
-              title: Text(workout.name),
-              subtitle: Text(
-                '${workout.exercises.length} exercício(s)' +
-                    (workout.createdAt != null
-                        ? ' · ${_formatDate(workout.createdAt!)}'
-                        : ''),
-              ),
-              leading: const Icon(Icons.fitness_center),
-              onTap: () => _showActions(context, workout),
+        return StreamBuilder<List<MachineProfile>>(
+          stream: _machinesStream,
+          builder: (context, machineSnapshot) {
+            if (machineSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (machineSnapshot.hasError) {
+              return const Center(child: Text('Erro ao carregar maquinas.'));
+            }
+            final workouts = workoutSnapshot.data ?? const <Workout>[];
+            final machinesById = {
+              for (final machine
+                  in machineSnapshot.data ?? const <MachineProfile>[])
+                machine.exerciseId: machine,
+            };
+            if (workouts.isEmpty) {
+              return const Center(
+                child: Text(
+                  'Voce ainda nao cadastrou nenhum treino novo. Crie um treino selecionando Maquinas cadastradas.',
+                  textAlign: TextAlign.center,
+                ),
+              );
+            }
+            return ListView.builder(
+              itemCount: workouts.length,
+              itemBuilder: (context, index) {
+                final workout = workouts[index];
+                return _WorkoutTile(
+                  workout: workout,
+                  machinesById: machinesById,
+                  onTap: () => _showActions(context, workout, machinesById),
+                );
+              },
             );
           },
         );
       },
     );
-
-    if (!embedInScaffold) {
-      return Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: content,
-      );
-    }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Lista de treinos'),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: content,
-      ),
-    );
   }
 
-  Widget _wrapContent(Widget child) {
-    if (embedInScaffold) {
-      return Scaffold(body: child);
-    }
-    return child;
-  }
-
-  String _formatDate(DateTime date) {
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    final year = date.year;
-    return '$day/$month/$year';
-  }
-
-  void _showActions(BuildContext context, Workout workout) {
+  void _showActions(
+    BuildContext context,
+    Workout workout,
+    Map<String, MachineProfile> machinesById,
+  ) {
+    final missingIds = missingMachineIds(workout, machinesById);
     showModalBottomSheet(
       context: context,
       builder: (ctx) {
@@ -101,15 +114,29 @@ class WorkoutListScreen extends StatelessWidget {
             children: [
               ListTile(
                 leading: const Icon(Icons.play_arrow),
-                title: const Text('Começar'),
-                onTap: () {
-                  Navigator.of(ctx).pop();
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => WorkoutExecutionScreen(workout: workout),
-                    ),
-                  );
-                },
+                title: const Text('Comecar'),
+                enabled: missingIds.isEmpty,
+                subtitle: missingIds.isEmpty
+                    ? null
+                    : const Text(
+                        'Uma ou mais maquinas deste treino nao estao disponiveis. Edite o treino antes de iniciar.',
+                      ),
+                onTap: missingIds.isEmpty
+                    ? () {
+                        Navigator.of(ctx).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => WorkoutExecutionScreen(
+                              workout: workout,
+                              machines: resolveWorkoutMachines(
+                                workout,
+                                machinesById,
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    : null,
               ),
               ListTile(
                 leading: const Icon(Icons.edit),
@@ -158,10 +185,51 @@ class WorkoutListScreen extends StatelessWidget {
     );
 
     if (shouldDelete == true && workout.id != null) {
-      await _workoutService.deleteWorkout(workout.id!);
+      await _workoutService.deleteWorkout(workout.ownerUid, workout.id!);
+      if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Treino excluído com sucesso')),
+        const SnackBar(content: Text('Treino excluido com sucesso')),
       );
     }
+  }
+}
+
+class _WorkoutTile extends StatelessWidget {
+  const _WorkoutTile({
+    required this.workout,
+    required this.machinesById,
+    required this.onTap,
+  });
+
+  final Workout workout;
+  final Map<String, MachineProfile> machinesById;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final missing = missingMachineIds(workout, machinesById);
+    final machines = resolveWorkoutMachines(workout, machinesById);
+    final names = machines.map((machine) => machine.exerciseName).take(3);
+    final subtitle = <String>[
+      '${workout.machineIds.length} maquina(s)',
+      if (names.isNotEmpty) names.join(', '),
+      if (missing.isNotEmpty) 'Referencia ausente',
+      if (workout.createdAt != null) _formatDate(workout.createdAt!),
+    ].join(' - ');
+    return ListTile(
+      title: Text(workout.name),
+      subtitle: Text(subtitle),
+      leading: Icon(
+        missing.isEmpty ? Icons.fitness_center : Icons.error_outline,
+        color: missing.isEmpty ? null : Colors.orange[800],
+      ),
+      onTap: onTap,
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
   }
 }

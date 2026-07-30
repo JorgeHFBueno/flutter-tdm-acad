@@ -4,7 +4,7 @@ import '../models/workout_analysis_log.dart';
 
 class WorkoutAnalysisLogService {
   final _collection =
-  FirebaseFirestore.instance.collection('workout_analysis_logs');
+      FirebaseFirestore.instance.collection('workout_analysis_logs');
 
   Future<void> saveLog(WorkoutAnalysisLog log) async {
     await _collection.add(log.toMap());
@@ -17,8 +17,8 @@ class WorkoutAnalysisLogService {
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
-          .map((doc) => WorkoutAnalysisLog.fromDocument(doc))
-          .toList(),
-    );
+              .map((doc) => WorkoutAnalysisLog.fromDocument(doc))
+              .toList(),
+        );
   }
 }

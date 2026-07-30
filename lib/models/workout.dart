@@ -1,82 +1,99 @@
 import "package:cloud_firestore/cloud_firestore.dart";
 
-class WorkoutExercise {
-  final String name;
-  final int defaultWeightKg;
-  final String? category;
+const int workoutSchemaVersion = 2;
 
-  WorkoutExercise({
-    required this.name,
-    required this.defaultWeightKg,
-    this.category,
-  });
+List<String> normalizeMachineIds(Iterable<String> ids) {
+  final normalized = <String>[];
+  final seen = <String>{};
+  for (final rawId in ids) {
+    final id = rawId.trim();
+    if (id.isEmpty || seen.contains(id)) continue;
+    seen.add(id);
+    normalized.add(id);
+  }
+  return normalized;
+}
 
-  Map<String, dynamic> toMap() => {
-    'name': name,
-    'defaultWeightKg': defaultWeightKg,
-    'category': category,
-  };
-
-  factory WorkoutExercise.fromMap(Map<String, dynamic> map) {
-    return WorkoutExercise(
-      name: map['name']?.toString() ?? '',
-      defaultWeightKg: (map['defaultWeightKg'] ?? 0) as int,
-      category: map['category']?.toString(),
-    );
+void validateWorkoutFields({
+  required String name,
+  required String ownerUid,
+  required Iterable<String> machineIds,
+}) {
+  if (name.trim().isEmpty) {
+    throw ArgumentError('Workout name cannot be empty');
+  }
+  if (ownerUid.trim().isEmpty) {
+    throw ArgumentError('Workout ownerUid cannot be empty');
+  }
+  if (normalizeMachineIds(machineIds).isEmpty) {
+    throw ArgumentError('Workout must reference at least one machine');
   }
 }
 
 class Workout {
   final String? id;
   final String name;
-  final List<WorkoutExercise> exercises;
   final String ownerUid;
-  final String ownerName;
+  final List<String> machineIds;
   final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final int schemaVersion;
 
   Workout({
     this.id,
     required this.name,
-    required this.exercises,
     required this.ownerUid,
-    required this.ownerName,
+    required List<String> machineIds,
     this.createdAt,
-  });
+    this.updatedAt,
+    this.schemaVersion = workoutSchemaVersion,
+  }) : machineIds = normalizeMachineIds(machineIds);
 
   Map<String, dynamic> toMap() {
     return {
       'name': name,
-      'exercises': exercises.map((e) => e.toMap()).toList(),
       'ownerUid': ownerUid,
-      'ownerName': ownerName,
+      'machineIds': machineIds,
+      'schemaVersion': schemaVersion,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
+      'updatedAt': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
     };
   }
+
   factory Workout.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
-    final timestamp = data['createdAt'] as Timestamp?;
-    final exercisesData = data['exercises'] as List<dynamic>? ?? const [];
+    return Workout.fromMap(data, id: doc.id);
+  }
 
-    final exercises = exercisesData.map((exercise) {
-      if (exercise is Map<String, dynamic>) {
-        return WorkoutExercise.fromMap(exercise);
-      }
-      // Backward compatibility with old format (list of strings)
-      if (exercise is String) {
-        return WorkoutExercise(name: exercise, defaultWeightKg: 10);
-      }
-      return WorkoutExercise(name: exercise.toString(), defaultWeightKg: 10);
-    }).toList();
-
+  factory Workout.fromMap(Map<String, dynamic> data, {String? id}) {
     return Workout(
-      id: doc.id,
+      id: id,
       name: data['name'] as String? ?? '',
-      exercises: exercises,
       ownerUid: data['ownerUid'] as String? ?? '',
-      ownerName: data['ownerName'] as String? ?? '',
-      createdAt: timestamp?.toDate(),
+      machineIds: (data['machineIds'] as List<dynamic>? ?? const [])
+          .map((id) => id.toString())
+          .toList(),
+      createdAt: _readDate(data['createdAt']),
+      updatedAt: _readDate(data['updatedAt']),
+      schemaVersion: _readInt(
+        data['schemaVersion'],
+        fallback: workoutSchemaVersion,
+      ),
     );
   }
+}
+
+DateTime? _readDate(Object? value) {
+  if (value is Timestamp) return value.toDate();
+  return null;
+}
+
+int _readInt(Object? value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
 }

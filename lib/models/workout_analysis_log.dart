@@ -22,16 +22,16 @@ class WorkoutAnalysisLog {
   });
 
   Map<String, dynamic> toMap() => {
-    'ownerUid': ownerUid,
-    'workoutId': workoutId,
-    'workoutName': workoutName,
-    'type': type,
-    'prompt': prompt,
-    'response': response,
-    'createdAt': createdAt != null
-        ? Timestamp.fromDate(createdAt!)
-        : FieldValue.serverTimestamp(),
-  };
+        'ownerUid': ownerUid,
+        'workoutId': workoutId,
+        'workoutName': workoutName,
+        'type': type,
+        'prompt': prompt,
+        'response': response,
+        'createdAt': createdAt != null
+            ? Timestamp.fromDate(createdAt!)
+            : FieldValue.serverTimestamp(),
+      };
 
   factory WorkoutAnalysisLog.fromDocument(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};

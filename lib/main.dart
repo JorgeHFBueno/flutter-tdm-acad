@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'app/appearance/app_appearance_controller.dart';
+import 'app/appearance/app_appearance_overlay.dart';
+import 'app/appearance/app_appearance_scope.dart';
+import 'app/appearance/app_theme_factory.dart';
 import 'firebase_options.dart';
 import 'screens/auth.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'screens/workout_creation_screen.dart';
 import 'menu2.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -35,8 +38,12 @@ Future<void> main() async {
   // 4) Push notifications
   // await _setupPushNotifications();
 
-  // 5) Sobe o app
-  runApp(const MyApp());
+  // 5) Carrega preferencias visuais locais
+  final appearanceController = AppAppearanceController();
+  await appearanceController.load();
+
+  // 6) Sobe o app
+  runApp(MyApp(appearanceController: appearanceController));
 }
 
 /* Future<void> _setupPushNotifications() async {
@@ -49,18 +56,37 @@ Future<void> main() async {
 } */
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({
+    super.key,
+    required this.appearanceController,
+  });
+
+  final AppAppearanceController appearanceController;
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      initialRoute: '/',
-      routes: {
-        '/': (context) => AuthScreen(),
-        '/menu': (context) => const Menu2(),
-        '/workout': (context) => const WorkoutCreationScreen(),
-      },
+    return AppAppearanceScope(
+      controller: appearanceController,
+      child: AnimatedBuilder(
+        animation: appearanceController,
+        builder: (context, child) {
+          return MaterialApp(
+            title: 'Vanguard',
+            theme: AppThemeFactory.build(appearanceController.mode),
+            initialRoute: '/',
+            builder: (context, child) {
+              return AppAppearanceOverlay(
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
+            routes: {
+              '/': (context) => AuthScreen(),
+              '/menu': (context) => const Menu2(),
+              '/workout': (context) => const WorkoutCreationScreen(),
+            },
+          );
+        },
+      ),
     );
   }
 }

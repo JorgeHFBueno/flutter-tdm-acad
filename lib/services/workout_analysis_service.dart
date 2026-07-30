@@ -1,7 +1,8 @@
 import 'package:flutter_gemini/flutter_gemini.dart';
 
 class WorkoutAnalysisService {
-  WorkoutAnalysisService({Gemini? gemini}) : _gemini = gemini ?? Gemini.instance;
+  WorkoutAnalysisService({Gemini? gemini})
+      : _gemini = gemini ?? Gemini.instance;
 
   final Gemini _gemini;
 

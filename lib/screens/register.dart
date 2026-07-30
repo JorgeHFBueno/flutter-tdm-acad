@@ -9,7 +9,7 @@ import '../services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   final Function()? onTap;
-  RegisterScreen({super.key, required this.onTap});
+  const RegisterScreen({super.key, required this.onTap});
 
   @override
   State<RegisterScreen> createState() {
@@ -45,22 +45,25 @@ class RegisterScreenState extends State<RegisterScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
-        print('Usuário ${userCredential.user!.email} registrado!');
+        debugPrint('Usuário ${userCredential.user!.email} registrado!');
 
         // save to users collection
-        final CollectionReference _users =
+        final CollectionReference users =
             FirebaseFirestore.instance.collection('users');
-        await _users.doc(userCredential.user!.uid).set({
+        await users.doc(userCredential.user!.uid).set({
           'uid': userCredential.user!.uid,
           'displayName': _nameController.text.trim(),
           'email': _emailController.text.trim(),
           'photoURL':
               'https://ui-avatars.com/api/?name=${_nameController.text}&background=E01C2F&color=fff'
         });
+        if (!mounted) {
+          return;
+        }
         // go to home screen
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => AuthScreen()),
+          MaterialPageRoute(builder: (context) => const AuthScreen()),
         );
       } else {
         // show error password don't match
@@ -81,12 +84,11 @@ class RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       genericErrorMessage(e.toString());
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -110,12 +112,11 @@ class RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       genericErrorMessage(e.toString());
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -156,7 +157,7 @@ class RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color.fromARGB(255, 243, 243, 243),
+      backgroundColor: const Color.fromARGB(255, 243, 243, 243),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -170,8 +171,12 @@ class RegisterScreenState extends State<RegisterScreen> {
                     const SizedBox(height: 50),
                     SizedBox(
                       height: 100,
-                      child:
-                          ClipOval(child: Image.asset('assets/logos/logo.jpg')),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/logos/patch_vanguard.png',
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Text(
@@ -186,7 +191,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                     MyTextField(
                       controller: _nameController,
                       hintText: 'Nome completo',
-                      icon: Icon(Icons.person_outline),
+                      icon: const Icon(Icons.person_outline),
                       obscureText: false,
                       capitalization: true,
                     ),
@@ -195,7 +200,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                     MyTextField(
                       controller: _emailController,
                       hintText: 'Email',
-                      icon: Icon(Icons.email_outlined),
+                      icon: const Icon(Icons.email_outlined),
                       obscureText: false,
                       capitalization: false,
                     ),
@@ -204,7 +209,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                     MyTextField(
                       controller: _passwordController,
                       hintText: 'Senha',
-                      icon: Icon(Icons.lock_outline),
+                      icon: const Icon(Icons.lock_outline),
                       obscureText: true,
                       capitalization: false,
                     ),
@@ -213,7 +218,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                     MyTextField(
                       controller: _confirmPasswordController,
                       hintText: 'Confirmar senha',
-                      icon: Icon(Icons.shield_outlined),
+                      icon: const Icon(Icons.shield_outlined),
                       obscureText: true,
                       capitalization: false,
                     ),
@@ -271,7 +276,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             backgroundColor: Colors.white,
                             foregroundColor: Colors.black87,
-                            side: BorderSide(color: Colors.grey),
+                            side: const BorderSide(color: Colors.grey),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -292,7 +297,7 @@ class RegisterScreenState extends State<RegisterScreen> {
                         ),
                         GestureDetector(
                           onTap: widget.onTap,
-                          child: Text(
+                          child: const Text(
                             'Faça login',
                             style: TextStyle(
                                 color: Color(0xffE01C2F),

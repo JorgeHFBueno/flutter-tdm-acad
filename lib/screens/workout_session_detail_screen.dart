@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../models/machine_configuration.dart';
 import '../models/workout_session.dart';
 import '../services/workout_analysis_service.dart';
 import '../models/workout_analysis_log.dart';
@@ -19,7 +20,8 @@ class WorkoutSessionDetailScreen extends StatefulWidget {
 class _WorkoutSessionDetailScreenState
     extends State<WorkoutSessionDetailScreen> {
   final WorkoutAnalysisService _analysisService = WorkoutAnalysisService();
-  final WorkoutAnalysisLogService _analysisLogService = WorkoutAnalysisLogService();
+  final WorkoutAnalysisLogService _analysisLogService =
+      WorkoutAnalysisLogService();
 
   @override
   Widget build(BuildContext context) {
@@ -48,59 +50,23 @@ class _WorkoutSessionDetailScreenState
               Text(
                 session.workoutName,
                 style:
-                const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text('Realizado em: $dateLabel'),
               Text('Início: $startLabel'),
               Text('Fim: $endLabel'),
               Text('Duração: $durationLabel'),
+              Text(
+                'Volume total: ${formatCompactNumber(calculateSessionVolume(session))} kg reps',
+              ),
               const SizedBox(height: 16),
               const Text(
                 'Exercícios',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              ...session.exercises.map((exercise) => Card(
-                margin: const EdgeInsets.symmetric(vertical: 6),
-                child: Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              exercise.exerciseName,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          if (exercise.perceivedEffort != null)
-                            Chip(
-                              label: Text(
-                                _effortLabel(exercise.perceivedEffort!),
-                              ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      ...exercise.sets.map(
-                            (set) => Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 2.0),
-                          child: Text(
-                            'Série ${set.setNumber}: ${set.reps} reps – ${set.weightKg} kg',
-                          ),
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              )),
+              ...session.exercises.map(_buildExerciseCard),
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
@@ -117,17 +83,69 @@ class _WorkoutSessionDetailScreenState
     );
   }
 
-  String _effortLabel(String effort) {
-    switch (effort) {
-      case 'certo':
-        return 'Certo';
-      case 'leve':
-        return 'Leve';
-      case 'fadiga':
-        return 'Fadiga';
-      default:
-        return effort;
-    }
+  Widget _buildExerciseCard(ExerciseExecution exercise) {
+    final title = exercise.isWarmup ? 'Aquecimento' : exercise.exerciseName;
+    final skipped = PerceivedEffort.isSkipped(exercise.perceivedEffort);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 6),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (!exercise.isWarmup && exercise.perceivedEffort != null)
+                  Chip(
+                    label: Text(
+                      PerceivedEffort.labelFor(exercise.perceivedEffort),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            if (exercise.isWarmup)
+              Text(
+                'Exercício utilizado: ${exercise.targetExerciseName ?? 'Não informado'}',
+              ),
+            if (skipped)
+              Text(
+                'Não realizado: ${PerceivedEffort.labelFor(exercise.perceivedEffort)}',
+              ),
+            if (!exercise.isWarmup && _hasConfigurationSnapshot(exercise))
+              Text(
+                'Configuração da máquina: ${_formatConfigurationSnapshot(exercise)}',
+              ),
+            if ((exercise.observationSnapshot ?? '').trim().isNotEmpty)
+              Text('OBS: ${exercise.observationSnapshot!.trim()}'),
+            if (exercise.sets.isEmpty)
+              const Text('Nenhuma série registrada.')
+            else
+              ...exercise.sets.map(
+                (set) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2.0),
+                  child: Text(
+                    'Série ${set.setNumber}: ${set.reps} reps - ${formatKg(set.weightKg)}',
+                  ),
+                ),
+              ),
+            const SizedBox(height: 4),
+            Text('Volume: ${formatCompactNumber(exercise.volume)} kg reps'),
+          ],
+        ),
+      ),
+    );
   }
 
   String _formatDateTime(DateTime? date) {
@@ -145,6 +163,25 @@ class _WorkoutSessionDetailScreenState
     final hours = duration.inHours;
     final remainingMinutes = minutes % 60;
     return '${hours}h ${remainingMinutes}min';
+  }
+
+  bool _hasConfigurationSnapshot(ExerciseExecution exercise) {
+    return exercise.configuredSets != null ||
+        exercise.configuredRepetitions != null ||
+        exercise.configuredWeightKg != null;
+  }
+
+  String _formatConfigurationSnapshot(ExerciseExecution exercise) {
+    final sets = exercise.configuredSets == null
+        ? 'Sem meta'
+        : '${exercise.configuredSets}';
+    final reps = exercise.configuredRepetitions == null
+        ? 'sem repeticoes'
+        : '${exercise.configuredRepetitions}';
+    final weight = exercise.configuredWeightKg == null
+        ? 'sem peso'
+        : formatKg(exercise.configuredWeightKg!);
+    return '$sets x $reps - $weight';
   }
 
   Future<void> _analyzeCurrentSession() async {
@@ -198,22 +235,40 @@ class _WorkoutSessionDetailScreenState
     try {
       await _analysisLogService.saveLog(log);
     } catch (e) {
-      print('Erro ao salvar histórico de análise de sessão: $e');
+      debugPrint('Erro ao salvar histórico de análise de sessão: $e');
     }
   }
 
   String _buildSessionPrompt(WorkoutSession session) {
     final buffer = StringBuffer()
       ..writeln(
-          'Você é um treinador de musculação. Analise APENAS este treino realizado, considerando ordem dos exercícios, carga (kg), séries e repetições, além da percepção de esforço ("certo", "leve", "fadiga"). Sugira ajustes práticos: trocar a ordem de equipamentos, aumentar ou diminuir peso ou número de séries, e comente se o treino parece adequado para objetivo de força/hipertrofia, levando em conta sinais de fadiga.')
+          'Você é um treinador de musculação. Analise APENAS este treino realizado, considerando a ordem executada, aquecimento, exercício-alvo do aquecimento, carga (kg), séries, repetições, volume e percepção de esforço em português. Sugira ajustes práticos: trocar a ordem de equipamentos, aumentar ou diminuir peso ou número de séries, e comente se o treino parece adequado para objetivo de força/hipertrofia, levando em conta sinais de fadiga.')
       ..writeln()
       ..writeln('Treino: ${session.workoutName}')
-      ..writeln('Data: ${_formatDateTime(session.performedAt ?? session.endAt)}');
+      ..writeln(
+          'Data: ${_formatDateTime(session.performedAt ?? session.endAt)}');
 
     for (final exercise in session.exercises) {
-      buffer.writeln('• ${exercise.exerciseName} (${exercise.perceivedEffort ?? 'sem percepção'})');
+      if (exercise.isWarmup) {
+        buffer.writeln(
+            '• Aquecimento para ${exercise.targetExerciseName ?? 'exercício não informado'} (sem percepção, volume ${formatCompactNumber(exercise.volume)} kg reps)');
+      } else {
+        buffer.writeln(
+            '• ${exercise.exerciseName} (${PerceivedEffort.labelFor(exercise.perceivedEffort)}, volume ${formatCompactNumber(exercise.volume)} kg reps)');
+        if (_hasConfigurationSnapshot(exercise)) {
+          buffer.writeln(
+              '  - Configuração esperada: ${_formatConfigurationSnapshot(exercise)}');
+        }
+        if ((exercise.observationSnapshot ?? '').trim().isNotEmpty) {
+          buffer.writeln('  - OBS: ${exercise.observationSnapshot!.trim()}');
+        }
+        if (PerceivedEffort.isSkipped(exercise.perceivedEffort)) {
+          buffer.writeln('  - Exercício não realizado.');
+        }
+      }
       for (final set in exercise.sets) {
-        buffer.writeln('  - Série ${set.setNumber}: ${set.reps} reps x ${set.weightKg} kg');
+        buffer.writeln(
+            '  - Série ${set.setNumber}: ${set.reps} reps x ${formatKg(set.weightKg)}');
       }
     }
 

@@ -44,7 +44,7 @@ class HomeScreen extends StatelessWidget {
                 }
 
                 if (snapshot.hasError) {
-                  print('Erro ao carregar treinos: ${snapshot.error}');
+                  debugPrint('Erro ao carregar treinos: ${snapshot.error}');
                   return const Center(child: Text('Erro ao carregar treinos.'));
                 }
 
@@ -132,6 +132,8 @@ class HomeScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Text('${workout.machineIds.length} maquina(s)'),
                 const SizedBox(height: 12),
                 ElevatedButton(
                   onPressed: () {

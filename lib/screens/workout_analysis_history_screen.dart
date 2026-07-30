@@ -22,36 +22,39 @@ class WorkoutAnalysisHistoryScreen extends StatelessWidget {
       body: user == null
           ? const Center(child: Text('Usuário não autenticado.'))
           : StreamBuilder<List<WorkoutAnalysisLog>>(
-        stream: _logService.getLogsForUser(user.uid),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+              stream: _logService.getLogsForUser(user.uid),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-          if (snapshot.hasError) {
-            print('Erro ao carregar histórico de análises da IA: ${snapshot.error}');
-            return const Center(
-              child: Text('Erro ao carregar histórico de análises da IA.'),
-            );
-          }
+                if (snapshot.hasError) {
+                  debugPrint(
+                    'Erro ao carregar histórico de análises da IA: ${snapshot.error}',
+                  );
+                  return const Center(
+                    child:
+                        Text('Erro ao carregar histórico de análises da IA.'),
+                  );
+                }
 
-          final logs = snapshot.data ?? [];
-          if (logs.isEmpty) {
-            return const Center(
-              child: Text('Você ainda não possui análises salvas.'),
-            );
-          }
+                final logs = snapshot.data ?? [];
+                if (logs.isEmpty) {
+                  return const Center(
+                    child: Text('Você ainda não possui análises salvas.'),
+                  );
+                }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: logs.length,
-            itemBuilder: (context, index) {
-              final log = logs[index];
-              return _LogCard(log: log);
-            },
-          );
-        },
-      ),
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: logs.length,
+                  itemBuilder: (context, index) {
+                    final log = logs[index];
+                    return _LogCard(log: log);
+                  },
+                );
+              },
+            ),
     );
   }
 }

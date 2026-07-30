@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class MyTextField extends StatefulWidget {
   final TextEditingController controller;
   final String hintText;
-  final icon;
+  final Widget icon;
   final bool obscureText;
   final bool capitalization;
 
@@ -60,7 +60,7 @@ class MyTextFieldState extends State<MyTextField> {
               hintText: widget.hintText,
               hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
               prefixIcon: Padding(
-                padding: EdgeInsets.all(0.0),
+                padding: const EdgeInsets.all(0.0),
                 child: widget.icon,
               )),
         ),

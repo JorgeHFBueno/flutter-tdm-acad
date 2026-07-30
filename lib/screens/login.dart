@@ -7,7 +7,7 @@ import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function()? onTap;
-  LoginScreen({super.key, required this.onTap});
+  const LoginScreen({super.key, required this.onTap});
 
   @override
   State<LoginScreen> createState() {
@@ -51,12 +51,11 @@ class LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       _genericErrorMessage(e.toString());
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -80,12 +79,11 @@ class LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       _genericErrorMessage(e.toString());
     } finally {
-      if (!mounted) {
-        return;
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
@@ -141,7 +139,10 @@ class LoginScreenState extends State<LoginScreen> {
                     SizedBox(
                       height: 100,
                       child: ClipOval(
-                        child: Image.asset('assets/logos/logo.jpg'),
+                        child: Image.asset(
+                          'assets/logos/patch_vanguard.png',
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 10),

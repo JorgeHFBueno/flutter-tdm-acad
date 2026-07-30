@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class MyButton extends StatefulWidget {
   final Function()? onPressed;
-  final formKey;
+  final GlobalKey<FormState> formKey;
   final String text;
 
   const MyButton({

@@ -8,9 +8,9 @@ class UserProfileService {
   final FirebaseFirestore _firestore;
 
   Future<void> upsertUserProfile(
-      User? user, {
-        required String provider,
-      }) async {
+    User? user, {
+    required String provider,
+  }) async {
     if (user == null) {
       return;
     }

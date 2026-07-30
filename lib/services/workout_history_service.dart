@@ -4,7 +4,7 @@ import '../models/workout_session.dart';
 
 class WorkoutHistoryService {
   final CollectionReference _history =
-  FirebaseFirestore.instance.collection('workout_history');
+      FirebaseFirestore.instance.collection('workout_history');
 
   Future<void> saveSession(WorkoutSession session) async {
     await _history.add({

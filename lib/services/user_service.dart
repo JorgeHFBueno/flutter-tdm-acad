@@ -4,11 +4,11 @@ import "../models/user.dart";
 
 class UserService {
   final CollectionReference _users =
-  FirebaseFirestore.instance.collection('users');
+      FirebaseFirestore.instance.collection('users');
 
   Future<UserModel?> getUser() async {
-    final _currentUser = FirebaseAuth.instance.currentUser!;
-    DocumentSnapshot userDoc = await _users.doc(_currentUser.uid).get();
+    final currentUser = FirebaseAuth.instance.currentUser!;
+    DocumentSnapshot userDoc = await _users.doc(currentUser.uid).get();
     return UserModel.fromSnap(userDoc);
   }
 }

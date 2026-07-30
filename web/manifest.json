@@ -1,11 +1,11 @@
 {
-    "name": "firebased",
-    "short_name": "firebased",
+    "name": "Vanguard",
+    "short_name": "Vanguard",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project FIReBASE.",
+    "description": "Vanguard",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

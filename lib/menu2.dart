@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/machine_history_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/workout_creation_screen.dart';
 import 'screens/workout_list_screen.dart';
 
 class Menu2 extends StatefulWidget {
   const Menu2({super.key});
-
 
   @override
   State<Menu2> createState() => _Menu2State();
@@ -25,7 +26,6 @@ class _Menu2State extends State<Menu2> {
         builder: () => HomeScreen(embedInScaffold: false),
         icon: Icons.home,
       ),
-
       _MenuPage(
         title: 'Criar treino',
         builder: () => const WorkoutCreationScreen(embedInScaffold: false),
@@ -37,9 +37,21 @@ class _Menu2State extends State<Menu2> {
         icon: Icons.list_alt,
       ),
       _MenuPage(
-        title: 'Histórico',
+        title: 'ConfiguraÃ§Ãµes',
+        builder: () => const SettingsScreen(),
+        icon: Icons.settings,
+      ),
+      _MenuPage(
+        title: 'Histórico de Treino',
         builder: () => const HistoryScreen(),
         icon: Icons.history,
+        group: 'Histórico',
+      ),
+      _MenuPage(
+        title: 'Máquinas',
+        builder: () => const MachinesScreen(embedInScaffold: false),
+        icon: Icons.fitness_center,
+        group: 'Histórico',
       ),
     ];
   }
@@ -54,26 +66,44 @@ class _Menu2State extends State<Menu2> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+              ),
               child: Align(
                 alignment: Alignment.bottomLeft,
                 child: Text(
-                  'Menu',
+                  'Vanguard',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                     fontSize: 24,
                   ),
                 ),
               ),
             ),
             for (int i = 0; i < _pages.length; i++)
-              ListTile(
-                leading: Icon(_pages[i].icon),
-                title: Text(_pages[i].title),
-                selected: _currentIndex == i,
-                onTap: () => _selectPage(i),
-              ),
+              if (_pages[i].group == null)
+                ListTile(
+                  leading: Icon(_pages[i].icon),
+                  title: Text(_pages[i].title),
+                  selected: _currentIndex == i,
+                  onTap: () => _selectPage(i),
+                ),
+            ExpansionTile(
+              leading: const Icon(Icons.history),
+              title: const Text('Histórico'),
+              initiallyExpanded: _pages[_currentIndex].group == 'Histórico',
+              children: [
+                for (int i = 0; i < _pages.length; i++)
+                  if (_pages[i].group == 'Histórico')
+                    ListTile(
+                      leading: Icon(_pages[i].icon),
+                      title: Text(_pages[i].title),
+                      selected: _currentIndex == i,
+                      onTap: () => _selectPage(i),
+                    ),
+              ],
+            ),
           ],
         ),
       ),
@@ -91,14 +121,17 @@ class _Menu2State extends State<Menu2> {
     Navigator.of(context).pop();
   }
 }
+
 class _MenuPage {
   _MenuPage({
     required this.title,
     required this.builder,
     required this.icon,
+    this.group,
   });
 
   final String title;
   final Widget Function() builder;
   final IconData icon;
+  final String? group;
 }

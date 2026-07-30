@@ -1,0 +1,961 @@
+diff --git a/docs/ANALISE_FLUXO_ATUAL.md b/docs/ANALISE_FLUXO_ATUAL.md
+new file mode 100644
+--- /dev/null
++++ b/docs/ANALISE_FLUXO_ATUAL.md
+@@ -0,0 +1,467 @@
++# 1. Resumo executivo
++
++A aplicacao e um projeto Flutter chamado `firebased`, com foco atual em autenticar usuarios, criar treinos de musculacao, listar/editar/excluir treinos, executar sessoes registrando series, repeticoes, carga e percepcao subjetiva, consultar historico e solicitar analises via Gemini. Evidencias principais: `pubspec.yaml`, `lib/main.dart`, `lib/menu2.dart`, `lib/screens/workout_creation_screen.dart`, `lib/screens/workout_execution_screen.dart`, `lib/screens/history_screen.dart`.
++
++Principais modulos encontrados:
++
++- Autenticacao por email/senha e Google: `lib/screens/login.dart`, `lib/screens/register.dart`, `lib/screens/auth.dart`, `lib/services/auth_service.dart`.
++- Perfil basico de usuario em Firestore: colecao `users` em `lib/screens/register.dart` e `lib/services/user_profile_service.dart`.
++- Treinos salvos no Firestore: modelo `Workout` em `lib/models/workout.dart` e servico `WorkoutService` em `lib/services/workout_service.dart`.
++- Execucao de treino e historico: `WorkoutExecutionScreen`, `WorkoutSession`, `WorkoutHistoryService`, colecao `workout_history`.
++- Analise de treino por Gemini: `WorkoutAnalysisService`, `HistoryScreen`, `WorkoutSessionDetailScreen`, colecao `workout_analysis_logs`.
++- Notificacoes FCM declaradas, mas nao conectadas ao fluxo ativo: `lib/services/notification_service.dart`; chamada comentada em `lib/main.dart`.
++
++Nivel estimado de conclusao: existe um MVP funcional para autenticar, cadastrar treinos simples, executar sessoes e consultar historico, mas o aplicativo ainda esta incompleto para um sistema de treino robusto. O criterio usado foi evidencia de tela acessivel + fluxo de entrada + persistencia + leitura posterior. Por esse criterio, autenticacao, CRUD basico de treinos, execucao basica, historico basico e IA textual existem; progressao automatica, modelos reutilizaveis de ficha, cadastro livre de exercicios, graficos/evolucao estruturada, Machine Learning/MLP e Firebase Storage operacional nao foram encontrados.
++
++Principais funcionalidades operacionais confirmadas:
++
++- Inicializacao Firebase e Gemini em `main()` (`lib/main.dart`).
++- Login/cadastro por email/senha (`LoginScreen._handleSignIn`, `RegisterScreen._handleSignUp`).
++- Login Google (`AuthService.signInWithGoogle`).
++- Criacao de treino com exercicios predefinidos e peso padrao (`WorkoutCreationScreen._saveWorkout`).
++- Listagem de treinos do usuario (`WorkoutService.getWorkoutsForUser`).
++- Edicao e exclusao de treino (`WorkoutEditScreen._saveWorkout`, `WorkoutService.deleteWorkout`).
++- Execucao de treino com adicao de series e finalizacao (`WorkoutExecutionScreen._openAddSetDialog`, `_finishWorkout`).
++- Historico de sessoes com volume total simples (`HistoryScreen._calculateVolume`).
++- Analise textual de sessao/historico com Gemini (`WorkoutAnalysisService.analyzeText`).
++
++Principais lacunas confirmadas:
++
++- Nao ha cadastro de exercicios persistente; os exercicios sao listas fixas nos widgets `WorkoutCreationScreen` e `WorkoutEditScreen`.
++- Nao ha ficha/modelo reutilizavel separado de `Workout`.
++- Nao ha fluxo de logout acessivel na interface, embora `AuthService.signOut()` exista.
++- Nao ha progressao automatica nem regras `3x10 -> 3x12 -> 3x15 -> aumento de peso`.
++- Nao ha indicadores `|`, `!` e `¡` definidos no codigo analisado.
++- Nao ha arquivos `strong.csv` ou `treinoscore_mlp.h5`, nem scripts/modelos MLP.
++- Nao ha graficos, recordes pessoais, filtros ou evolucao de carga estruturada.
++- Dependencias runtime aparecem em `dev_dependencies`, causando alertas de analise (`flutter analyze`).
++
++Dependencias externas relevantes em `pubspec.yaml`: `firebase_core`, `firebase_auth`, `cloud_firestore`, `firebase_storage`, `firebase_messaging`, `google_sign_in`, `flutter_gemini`, `flutter_dotenv`, `flutter_svg`, `google_ml_kit`, `intl`. Observacao: elas estao sob `dev_dependencies`, nao em `dependencies`, conforme `pubspec.yaml` e resultado de `flutter analyze`.
++
++# 2. Estrutura tecnica do projeto
++
++Versao e estrutura Flutter:
++
++- `pubspec.yaml` declara `environment: sdk: ^3.6.1`.
++- Projeto Flutter criado com plataformas Android e Web: pastas `android/`, `web/`, arquivo `.metadata`, `android/app/src/main/kotlin/com/jrgbn/firebased/MainActivity.kt`.
++- Firebase FlutterFire configurado em `lib/firebase_options.dart`, `firebase.json`, `.firebaserc`, `android/app/google-services.json`.
++- Hosting configurado para publicar a pasta `n` em `firebase.json`.
++
++Arvore resumida relevante:
++
++```text
++.
++|-- lib
++|   |-- main.dart
++|   |-- menu2.dart
++|   |-- firebase_options.dart
++|   |-- components
++|   |   |-- editor.dart
++|   |   |-- my_button.dart
++|   |   |-- my_textfield.dart
++|   |   `-- square_tile.dart
++|   |-- models
++|   |   |-- user.dart
++|   |   |-- workout.dart
++|   |   |-- workout_analysis_log.dart
++|   |   `-- workout_session.dart
++|   |-- screens
++|   |   |-- auth.dart
++|   |   |-- login.dart
++|   |   |-- register.dart
++|   |   |-- home_screen.dart
++|   |   |-- workout_creation_screen.dart
++|   |   |-- workout_list_screen.dart
++|   |   |-- workout_edit_screen.dart
++|   |   |-- workout_execution_screen.dart
++|   |   |-- history_screen.dart
++|   |   |-- workout_session_detail_screen.dart
++|   |   |-- workout_analysis_history_screen.dart
++|   |   `-- workout_analysis_detail_screen.dart
++|   `-- services
++|       |-- auth_service.dart
++|       |-- user_service.dart
++|       |-- user_profile_service.dart
++|       |-- workout_service.dart
++|       |-- workout_history_service.dart
++|       |-- workout_analysis_service.dart
++|       |-- workout_analysis_log_service.dart
++|       `-- notification_service.dart
++|-- assets
++|   |-- icons/google.svg
++|   `-- logos/logo.jpg
++|-- test/widget_test.dart
++|-- pubspec.yaml
++|-- firebase.json
++`-- android/app/google-services.json
++```
++
++Padrao arquitetural identificado:
++
++- Arquitetura simples orientada a telas (`lib/screens/*`) e servicos (`lib/services/*`).
++- Modelos de dominio em `lib/models/*`.
++- Nao ha camada formal de repository separada; os servicos acessam Firestore diretamente (`WorkoutService`, `WorkoutHistoryService`, `WorkoutAnalysisLogService`, `UserProfileService`).
++- Nao ha Provider, Riverpod, BLoC, Cubit ou ChangeNotifier encontrados por busca em `lib` (`rg "Provider|ChangeNotifier|Bloc|Cubit|Riverpod"`).
++
++Gerenciamento de estado:
++
++- Estado local com `StatefulWidget` e `setState`: `LoginScreen`, `RegisterScreen`, `Menu2`, `WorkoutCreationScreen`, `WorkoutEditScreen`, `WorkoutExecutionScreen`, `HistoryScreen`.
++- Estado reativo vindo de streams Firebase: `AuthScreen` usa `StreamBuilder<User?>`; `HomeScreen`, `WorkoutListScreen`, `HistoryScreen` e `WorkoutAnalysisHistoryScreen` usam `StreamBuilder`.
++
++Navegacao e rotas:
++
++- `MaterialApp` em `lib/main.dart` define `initialRoute: '/'`.
++- Rotas nomeadas: `/` -> `AuthScreen`, `/menu` -> `Menu2`, `/workout` -> `WorkoutCreationScreen`.
++- A maior parte da navegacao usa `MaterialPageRoute`: `HomeScreen`, `WorkoutListScreen`, `HistoryScreen`, `WorkoutSessionDetailScreen`, `WorkoutAnalysisHistoryScreen`.
++- O menu principal e um `Drawer` com `IndexedStack` em `lib/menu2.dart`.
++
++Modelos:
++
++- `UserModel` (`lib/models/user.dart`).
++- `Workout` e `WorkoutExercise` (`lib/models/workout.dart`).
++- `WorkoutSession`, `ExerciseExecution`, `ExerciseSet` (`lib/models/workout_session.dart`).
++- `WorkoutAnalysisLog` (`lib/models/workout_analysis_log.dart`).
++
++Servicos:
++
++- `AuthService`: Firebase Auth e Google Sign-In.
++- `UserProfileService`: upsert de perfil em `users`.
++- `UserService`: leitura do usuario atual em `users`.
++- `WorkoutService`: CRUD parcial em `workouts`.
++- `WorkoutHistoryService`: escrita em `workout_history`.
++- `WorkoutAnalysisService`: chamada Gemini.
++- `WorkoutAnalysisLogService`: escrita/leitura em `workout_analysis_logs`.
++- `NotificationService`: FCM, mas nao conectado ao fluxo ativo.
++
++Widgets compartilhados:
++
++- `MyButton`, `MyTextField`, `SquareTile`, `Editor`.
++- `SquareTile` e `Editor` nao aparecem conectados nas telas atuais pelas importacoes/buscas analisadas; `MyButton` e `MyTextField` sao usados em login/registro.
++
++Integracao com backend:
++
++- Firebase Authentication: `FirebaseAuth.instance`, `authStateChanges`, email/senha, Google provider.
++- Cloud Firestore: colecoes `users`, `workouts`, `workout_history`, `workout_analysis_logs`.
++- Gemini: `Gemini.init` em `main.dart` e `Gemini.instance.prompt` em `WorkoutAnalysisService`.
++- Firebase Messaging: dependencia e servico presentes, inicializacao comentada.
++
++Dependencias importantes:
++
++- `firebase_core`, `firebase_auth`, `cloud_firestore`, `google_sign_in`, `flutter_gemini`, `flutter_dotenv`, `firebase_messaging`, `firebase_storage`, `google_ml_kit`, `intl`, `flutter_svg`.
++- Problema tecnico: `flutter analyze` relatou `depend_on_referenced_packages` para esses imports porque estao em `dev_dependencies` em `pubspec.yaml`.
++
++# 3. Telas e rotas encontradas
++
++| Tela/classe | Arquivo | Rota | Finalidade | Dependencias | Estado |
++|---|---|---|---|---|---|
++| `MyApp` | `lib/main.dart` | n/a | Configura `MaterialApp`, rotas `/`, `/menu`, `/workout` | `Firebase.initializeApp`, `DefaultFirebaseOptions`, `Gemini.init`, `dotenv` | Implementado |
++| `AuthScreen` | `lib/screens/auth.dart` | `/` | Decide entre login/registro e menu pelo estado de auth | `AuthService.authStateChanges`, `Menu2`, `LoginOrRegisterScreen` | Implementado |
++| `LoginOrRegisterScreen` | `lib/screens/login_or_register.dart` | indireta por `/` | Alterna entre login e registro localmente | `LoginScreen`, `RegisterScreen` | Implementado |
++| `LoginScreen` | `lib/screens/login.dart` | indireta por `/` | Login email/senha e Google | `AuthService`, `MyTextField`, `MyButton`, `SvgPicture` | Implementado |
++| `RegisterScreen` | `lib/screens/register.dart` | indireta por `/` | Cadastro email/senha e Google | `FirebaseAuth`, `FirebaseFirestore`, `AuthService` | Implementado, com duplicacao de perfil em relacao a `UserProfileService` |
++| `Menu2` | `lib/menu2.dart` | `/menu` e retorno do `AuthScreen` | Navegacao principal via drawer e `IndexedStack` | `HomeScreen`, `WorkoutCreationScreen`, `WorkoutListScreen`, `HistoryScreen` | Implementado |
++| `HomeScreen` | `lib/screens/home_screen.dart` | drawer: Inicio | Mostra saudacao e primeiro treino sugerido | `FirebaseAuth.currentUser`, `WorkoutService.getWorkoutsForUser` | Parcialmente implementado |
++| `WorkoutCreationScreen` | `lib/screens/workout_creation_screen.dart` | `/workout` e drawer: Criar treino | Criar treino a partir de listas fixas por categoria | `FirebaseAuth`, `WorkoutService`, `Workout`, `WorkoutExercise` | Implementado para criacao simples |
++| `WorkoutListScreen` | `lib/screens/workout_list_screen.dart` | drawer: Lista de treinos | Lista treinos e abre acoes | `WorkoutService`, `WorkoutExecutionScreen`, `WorkoutEditScreen` | Implementado |
++| `WorkoutEditScreen` | `lib/screens/workout_edit_screen.dart` | `MaterialPageRoute` | Edita nome, lista fixa de exercicios e pesos | `FirebaseAuth`, `WorkoutService`, `Workout` | Parcialmente implementado |
++| `WorkoutExecutionScreen` | `lib/screens/workout_execution_screen.dart` | `MaterialPageRoute` | Executa treino, registra series e percepcao | `Workout`, `WorkoutSession`, `WorkoutHistoryService`, `FirebaseAuth` | Implementado para execucao basica |
++| `HistoryScreen` | `lib/screens/history_screen.dart` | drawer: Historico | Lista sessoes, volume, analise IA do historico | `FirebaseFirestore`, `FirebaseAuth`, `WorkoutAnalysisService`, `WorkoutAnalysisLogService` | Implementado para historico basico |
++| `WorkoutSessionDetailScreen` | `lib/screens/workout_session_detail_screen.dart` | `MaterialPageRoute` | Detalha uma sessao e analisa com IA | `WorkoutSession`, `WorkoutAnalysisService`, `WorkoutAnalysisLogService` | Implementado |
++| `WorkoutAnalysisHistoryScreen` | `lib/screens/workout_analysis_history_screen.dart` | `MaterialPageRoute` por `HistoryScreen` | Lista logs de analise IA | `WorkoutAnalysisLogService`, `FirebaseAuth` | Implementado |
++| `WorkoutAnalysisDetailScreen` | `lib/screens/workout_analysis_detail_screen.dart` | `MaterialPageRoute` | Exibe resposta de IA e permite copiar | `WorkoutAnalysisLog`, `Clipboard` | Implementado |
++| `Editor` | `lib/components/editor.dart` | n/a | Campo generico de texto | `TextField` | Nao utilizado |
++| `SquareTile` | `lib/components/square_tile.dart` | n/a | Botao quadrado com SVG | `flutter_svg` | Nao utilizado |
++
++# 4. Fluxo atual de funcionamento do aplicativo
++
++Descricao textual:
++
++Ao iniciar, `main()` carrega `.env`, inicializa Firebase com `DefaultFirebaseOptions.currentPlatform`, tenta inicializar Gemini com `GEMINI_API_KEY` e executa `MyApp`. A rota inicial `/` renderiza `AuthScreen`, que observa `AuthService.authStateChanges`. Se ha usuario autenticado, mostra `Menu2`; caso contrario, mostra `LoginOrRegisterScreen`. O menu principal permite acessar Inicio, Criar treino, Lista de treinos e Historico. A criacao grava documentos em `workouts`. A lista consulta `workouts`, permite iniciar, editar ou excluir. A execucao registra series em memoria durante a tela e, ao concluir, grava uma sessao em `workout_history`. O historico le `workout_history`, mostra volume total e permite abrir detalhes ou gerar analises por Gemini, salvas em `workout_analysis_logs`.
++
++Fluxograma Mermaid do fluxo real:
++
++```mermaid
++flowchart TD
++    A[main] --> B[dotenv.load .env]
++    B --> C[Firebase.initializeApp]
++    C --> D{GEMINI_API_KEY existe?}
++    D -- sim --> E[Gemini.init]
++    D -- nao --> F[debugPrint chave ausente]
++    E --> G[runApp MyApp]
++    F --> G
++    G --> H[MaterialApp rota inicial /]
++    H --> I[AuthScreen StreamBuilder authStateChanges]
++    I -->|usuario autenticado| J[Menu2]
++    I -->|sem usuario| K[LoginOrRegisterScreen]
++    K --> L[LoginScreen]
++    K --> M[RegisterScreen]
++    L -->|email/senha ou Google| I
++    M -->|email/senha ou Google| I
++    J --> N[HomeScreen]
++    J --> O[WorkoutCreationScreen]
++    J --> P[WorkoutListScreen]
++    J --> Q[HistoryScreen]
++    O --> R[(Firestore workouts)]
++    P --> R
++    P --> S[WorkoutExecutionScreen]
++    P --> T[WorkoutEditScreen]
++    P --> U[deleteWorkout]
++    S --> V[(Firestore workout_history)]
++    Q --> V
++    Q --> W[WorkoutSessionDetailScreen]
++    Q --> X[Gemini analysis]
++    W --> X
++    X --> Y[(Firestore workout_analysis_logs)]
++    Q --> Z[WorkoutAnalysisHistoryScreen]
++    Z --> Y
++```
++
++Fluxo principal numerado:
++
++1. `lib/main.dart` chama `WidgetsFlutterBinding.ensureInitialized()`.
++2. `main()` carrega `.env` com `dotenv.load(fileName: ".env")`.
++3. `main()` inicializa Firebase com `Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform)`.
++4. `main()` le `dotenv.env['GEMINI_API_KEY']`; se existir, chama `Gemini.init`.
++5. `MyApp` abre `AuthScreen` pela rota `/`.
++6. `AuthScreen` usa `AuthService.authStateChanges`.
++7. Usuario sem sessao ve `LoginOrRegisterScreen`; usuario autenticado ve `Menu2`.
++8. `Menu2` exibe Inicio, Criar treino, Lista de treinos e Historico.
++9. `WorkoutCreationScreen._saveWorkout` grava em `workouts`.
++10. `WorkoutListScreen` le `workouts` e permite iniciar/editar/excluir.
++11. `WorkoutExecutionScreen` registra series locais e `WorkoutHistoryService.saveSession` grava em `workout_history`.
++12. `HistoryScreen` le `workout_history`, calcula volume e abre detalhes/analise IA.
++13. `WorkoutAnalysisLogService.saveLog` grava analises em `workout_analysis_logs`.
++
++Fluxos alternativos e erros:
++
++- Se nao houver usuario autenticado em `HomeScreen`, `WorkoutCreationScreen`, `WorkoutListScreen`, `HistoryScreen` ou `WorkoutExecutionScreen._finishWorkout`, a UI exibe mensagem de usuario nao autenticado.
++- Se `GEMINI_API_KEY` estiver ausente, `main.dart` apenas executa `debugPrint`; telas de IA continuam acessiveis e podem falhar ao chamar `Gemini.instance`.
++- Se o login email/senha falhar, `LoginScreen._handleSignIn` mapeia codigos `invalid-credential`, `invalid-email`, `user-not-found`, `wrong-password`.
++- Se o cadastro tiver senhas diferentes ou FirebaseAuthException, `RegisterScreen._handleSignUp` mostra `SnackBar`.
++- Se criar/editar treino sem nome ou sem exercicios, os metodos `_saveWorkout` bloqueiam com `SnackBar`.
++- Se concluir treino sem nenhuma serie, `WorkoutExecutionScreen._finishWorkout` bloqueia a gravacao.
++- Se Firestore falhar nas streams, telas mostram mensagens genericas e alguns `print`.
++- Nao ha fluxo persistido de cancelamento de sessao; voltar da tela descarta os dados locais em `_executions`.
++
++# 5. Fluxo de autenticacao e usuario
++
++Inicializacao:
++
++- `lib/main.dart` inicializa Firebase antes de `runApp`.
++- `lib/screens/auth.dart` identifica autenticacao por `StreamBuilder<User?>` conectado a `AuthService.authStateChanges`.
++
++Login:
++
++- Email/senha: `LoginScreen._handleSignIn` chama `AuthService.signInWithEmail`, que chama `FirebaseAuth.signInWithEmailAndPassword`.
++- Google: `LoginScreen._handleGoogleSignIn` chama `AuthService.signInWithGoogle`.
++- Em Web, `AuthService.signInWithGoogle` usa `FirebaseAuth.signInWithPopup(GoogleAuthProvider())`.
++- Em mobile, usa `GoogleSignIn.signIn()`, `googleUser.authentication` e `FirebaseAuth.signInWithCredential`.
++- Depois do Google, `AuthService.signInWithGoogle` chama `UserProfileService.upsertUserProfile`.
++
++Cadastro:
++
++- `RegisterScreen._handleSignUp` usa `FirebaseAuth.createUserWithEmailAndPassword`.
++- Apos cadastro, grava `users/{uid}` diretamente via `FirebaseFirestore.instance.collection('users')`.
++- Campos gravados no cadastro email/senha: `uid`, `displayName`, `email`, `photoURL`.
++- Cadastro por Google em `RegisterScreen._handleGoogleSignIn` reutiliza `AuthService.signInWithGoogle`, gravando perfil via `UserProfileService`.
++
++Logout:
++
++- `AuthService.signOut()` existe e chama `GoogleSignIn.signOut()` e `FirebaseAuth.signOut()`.
++- Nao foi encontrada chamada de `signOut()` em telas ou menu por busca de referencias; portanto logout nao esta acessivel pela interface atual.
++
++Perfil:
++
++- Armazenado em `users/{uid}`.
++- `UserProfileService.upsertUserProfile` grava/mescla `uid`, `displayName`, `email`, `photoURL`, `provider`, `lastLoginAt`.
++- `RegisterScreen._handleSignUp` grava `uid`, `displayName`, `email`, `photoURL`, sem `provider` e sem `lastLoginAt`.
++- `UserModel` em `lib/models/user.dart` espera `uid`, `displayName`, `email`, `photoURL`.
++- `UserService.getUser()` le `users/{currentUser.uid}`, mas nao foi encontrado uso dessa classe no fluxo de telas.
++
++Permissoes:
++
++- Nao ha camada de papeis/permissoes no codigo Dart.
++- Nao foram encontrados arquivos de regras Firestore/Storage no reposititorio pela lista de arquivos (`rg --files`).
++- O app depende de regras Firebase externas ao repositorio para isolar dados por `ownerUid`.
++
++Perfil inexistente:
++
++- Para login Google, `UserProfileService.upsertUserProfile` cria/mescla perfil.
++- Para login email/senha de conta ja existente sem documento em `users`, `AuthScreen` ainda deixa entrar no `Menu2`, porque usa apenas `FirebaseAuth`; nao ha verificacao obrigatoria do documento `users/{uid}`.
++- `UserService.getUser()` usa `FirebaseAuth.instance.currentUser!` e `UserModel.fromSnap`, podendo falhar se nao houver usuario ou campos esperados, mas essa leitura nao aparece conectada a telas.
++
++Erros de autenticacao:
++
++- `LoginScreen._handleSignIn` e `_handleGoogleSignIn` mostram `SnackBar`.
++- `RegisterScreen._handleSignUp` e `_handleGoogleSignIn` mostram `SnackBar`.
++- `AuthService.signInWithGoogle` encapsula erros em `AuthServiceException`.
++
++# 6. Fluxo de criacao e gerenciamento de treinos
++
++Criacao:
++
++- `WorkoutCreationScreen` possui `_categories = ['Perna', 'Peito', 'Costas']`.
++- `_exercisesByCategory` contem listas fixas de exercicios por categoria.
++- O usuario informa nome em `_nameController`, escolhe exercicios com `CheckboxListTile` e escolhe peso padrao por `DropdownButton<int>`.
++- `_availableWeights` gera valores de 10 kg a 100 kg em intervalos de 5.
++- `_saveWorkout` valida usuario autenticado, nome nao vazio e ao menos um exercicio.
++- `_saveWorkout` cria `Workout` com `name`, `exercises`, `ownerUid`, `ownerName`.
++- Cada `WorkoutExercise` grava `name`, `defaultWeightKg`, `category`.
++- `WorkoutService.createWorkout` adiciona documento em `workouts` com `createdAt: FieldValue.serverTimestamp()`.
++
++Estrutura do treino:
++
++- Modelo `Workout`: `id`, `name`, `exercises`, `ownerUid`, `ownerName`, `createdAt`.
++- Modelo `WorkoutExercise`: `name`, `defaultWeightKg`, `category`.
++- Ordem dos exercicios: ordem de iteracao de `_selectedExercisesWithWeight.entries`, sem campo de ordem explicito. Como `Map` em Dart preserva insercao, a ordem atual depende da sequencia de selecao, mas nao ha `orderIndex` persistido.
++- Series/repeticoes/cargas por serie nao fazem parte de `Workout`; sao gravadas em `WorkoutSession` durante a execucao.
++- Intervalos e observacoes nao foram encontrados nos modelos/telas.
++
++Edicao:
++
++- `WorkoutEditScreen` recebe `Workout`.
++- Inicializa `_selectedExercisesWithWeight` com exercicios existentes.
++- Salva via `WorkoutService.updateWorkout`.
++- Limitacao: a lista editavel `_availableExercises` e diferente da lista usada em `WorkoutCreationScreen`; exercicios criados originalmente podem nao aparecer como opcoes selecionaveis se nao estiverem nessa lista.
++- `updateWorkout` atualiza `name`, `exercises`, `ownerUid`, `ownerName`; nao atualiza `createdAt`.
++
++Exclusao:
++
++- `WorkoutListScreen._confirmDelete` confirma em `AlertDialog`.
++- Se `workout.id != null`, chama `WorkoutService.deleteWorkout`.
++- Nao apaga sessoes antigas em `workout_history`, gerando possivel historico orfao por `workoutId`.
++
++Duplicacao e reutilizacao de ficha:
++
++- Nao foi encontrado metodo ou tela de duplicacao.
++- Nao ha modelo separado de ficha/template reutilizavel alem do proprio `Workout`.
++
++Fluxo Mermaid de criacao de treino:
++
++```mermaid
++flowchart TD
++    A[Menu2: Criar treino] --> B[WorkoutCreationScreen]
++    B --> C{FirebaseAuth.currentUser existe?}
++    C -- nao --> D[Mensagem: Usuario nao autenticado]
++    C -- sim --> E[Informar nome]
++    E --> F[Selecionar categoria fixa]
++    F --> G[Selecionar exercicios fixos]
++    G --> H[Selecionar peso padrao]
++    H --> I[Salvar treino]
++    I --> J{Validacoes}
++    J -- nome vazio --> K[SnackBar informe nome]
++    J -- sem exercicios --> L[SnackBar selecione exercicio]
++    J -- ok --> M[WorkoutService.createWorkout]
++    M --> N[(Firestore workouts)]
++    N --> O[Limpa formulario e selecoes]
++```
++
++# 7. Fluxo de execucao de um treino
++
++Inicio da sessao:
++
++- `WorkoutListScreen._showActions` abre `WorkoutExecutionScreen(workout: workout)` ao tocar em `Comecar`.
++- `WorkoutExecutionScreen.initState` define `_startAt = DateTime.now()`.
++- `_executions` e inicializado com uma entrada por `WorkoutExercise`, contendo `ExerciseExecution(exerciseName, sets: [], completed: false)`.
++
++Carregamento e exibicao:
++
++- `build` copia `widget.workout.exercises` e ordena para colocar exercicios nao concluidos antes dos concluidos.
++- `_buildExerciseCard` mostra nome, numero de series registradas, ultima serie ou peso padrao, percepcao de esforco quando existir e botao `Concluir maquina`.
++
++Registro de series:
++
++- Botao `Icons.add` chama `_openAddSetDialog`.
++- Dialogo pede `Repeticoes` e `Peso (kg)` com validacao `int.tryParse` e `> 0`.
++- Valores padrao do dialogo: repeticoes da ultima serie ou 10; peso da ultima serie ou `exercise.defaultWeightKg`.
++- Ao adicionar, cria `ExerciseSet(setNumber: execution.sets.length + 1, reps, weightKg)` e atualiza `_executions` com `setState`.
++
++Conclusao de exercicio:
++
++- `_completeExercise` abre dialogo de percepcao de esforco.
++- Opcoes codificadas: `certo`, `leve`, `fadiga`.
++- Ao confirmar, grava `perceivedEffort` e `completed: true` em memoria.
++- Uma vez concluido, nao permite adicionar novas series para aquele exercicio.
++
++Finalizacao:
++
++- Botao `Concluir treino` chama `_finishWorkout`.
++- `_finishWorkout` exige pelo menos uma serie em qualquer exercicio.
++- Verifica `FirebaseAuth.instance.currentUser`.
++- Monta `WorkoutSession` com `workoutId`, `workoutName`, `ownerUid`, `startAt`, `endAt`, `performedAt` e `exercises`.
++- `WorkoutHistoryService.saveSession` grava documento em `workout_history`.
++- Apos sucesso, mostra `SnackBar` e `Navigator.pop`.
++
++Cancelamento:
++
++- Nao ha botao ou metodo especifico de cancelamento.
++- Se o usuario voltar antes de concluir, os dados em `_executions` sao descartados e nada e persistido.
++
++Historico atualizado:
++
++- `HistoryScreen` escuta `workout_history` filtrando por `ownerUid` e ordenando por `performedAt`.
++- Como usa stream, novas sessoes aparecem automaticamente quando gravadas.
++
++Colecoes e campos:
++
++- `workout_history`: `workoutId`, `workoutName`, `ownerUid`, `performedAt`, `startAt`, `endAt`, `exercises`.
++- `exercises`: lista de mapas com `exerciseName`, `sets`, `perceivedEffort`, `completed`.
++- `sets`: lista de mapas com `setNumber`, `reps`, `weightKg`.
++
++Fluxograma Mermaid de execucao:
++
++```mermaid
++flowchart TD
++    A[WorkoutListScreen] --> B[Acao Comecar]
++    B --> C[WorkoutExecutionScreen.initState]
++    C --> D[Inicializa startAt e executions]
++    D --> E[Exibe cards de exercicio]
++    E --> F{Adicionar serie?}
++    F -- sim --> G[Dialog reps e peso]
++    G --> H{reps/peso validos?}
++    H -- nao --> G
++    H -- sim --> I[Adiciona ExerciseSet em memoria]
++    I --> E
++    E --> J{Concluir maquina?}
++    J -- sim --> K[Seleciona certo/leve/fadiga]
++    K --> L[Marca exercicio completo em memoria]
++    L --> E
++    E --> M[Concluir treino]
++    M --> N{Existe ao menos uma serie?}
++    N -- nao --> O[SnackBar registre serie]
++    N -- sim --> P{Usuario autenticado?}
++    P -- nao --> Q[SnackBar usuario nao autenticado]
++    P -- sim --> R[WorkoutHistoryService.saveSession]
++    R --> S[(Firestore workout_history)]
++    S --> T[Volta para lista]
++```
++
++# 8. Historico e evolucao
++
++Historico consultado:
++
++- `HistoryScreen` consulta `FirebaseFirestore.instance.collection('workout_history').where('ownerUid', isEqualTo: user.uid).orderBy('performedAt', descending: true).snapshots()`.
++- `WorkoutAnalysisLogService.getLogsForUser` consulta `workout_analysis_logs` por `ownerUid`, ordenando por `createdAt`.
++
++Granularidade:
++
++- Sessao: `WorkoutSession` armazena treino, dono, timestamps e lista de exercicios.
++- Exercicio na sessao: `ExerciseExecution` armazena nome, series, percepcao e conclusao.
++- Serie: `ExerciseSet` armazena numero, repeticoes e peso.
++
++Dados por sessao:
++
++- `workoutId`, `workoutName`, `ownerUid`, `performedAt`, `startAt`, `endAt`, `exercises`.
++- Evidencias: `lib/models/workout_session.dart`, `lib/services/workout_history_service.dart`.
++
++Comparacao entre sessoes:
++
++- Nao ha comparacao estruturada em codigo.
++- `HistoryScreen._analyzeHistory` busca sessoes do mesmo `workoutName` e envia ao Gemini; a comparacao fica delegada ao texto gerado pela IA.
++
++Graficos:
++
++- Nao encontrados.
++
++Calculo de volume:
++
++- Implementado em `HistoryScreen._calculateVolume` como soma de `set.reps * set.weightKg` para todas as series.
++- Exibido em `HistoryScreen._buildSessionCard` como `Volume total`.
++
++Recordes pessoais:
++
++- Nao encontrados.
++
++Evolucao de carga:
++
++- Parcial/indireta: dados de carga por serie sao persistidos em `workout_history` e enviados ao Gemini em prompts.
++- Nao ha calculo local de evolucao por exercicio, grafico ou recomendacao deterministica.
++
++Filtros e ordenacao:
++
++- Ordenacao por `performedAt` descendente existe em `HistoryScreen`.
++- Filtro por treino para analise existe em `_analyzeHistory` usando `workoutName`.
++- Nao ha filtros de UI por data, exercicio ou treino.
++
++Exercicios sem historico:
++
++- Se nao houver sessoes, `HistoryScreen` mostra `Nenhuma sessao registrada ainda`.
++- Nao ha tratamento especifico para exercicio sem historico dentro de um treino.
++
++Sessoes incompletas:
++
++- O app permite salvar sessao com apenas uma serie em qualquer exercicio; exercicios sem series sao persistidos com `sets: []` e podem ter `completed: false`.
++- Nao ha estado formal `incomplete` para sessao.
++
++# 9. Sistema de progressao
++
++| Item procurado | Estado | Evidencia |
++|---|---|---|
++| Simbolos `|`, `!` e `¡` | Nao encontrado | Busca direcionada por `\|`, `!`, `¡` nao encontrou definicao funcional em `lib`; ocorrencias de `|` sao operadores/HTML/AndroidManifest |
++| Quatro registros concluidos | Nao encontrado | Nao ha regra contando quatro sessoes ou quatro conclusoes em `WorkoutExecutionScreen`, `HistoryScreen` ou servicos |
++| Progressao `3x10 -> 3x12` | Nao encontrado | Busca por `3x10`, `3×10`, `3x12`, `3×12` sem resultado funcional |
++| Progressao `3x12 -> 3x15` | Nao encontrado | Busca por `3x15`, `3×15` sem resultado funcional |
++| Aumento posterior da carga | Parcial | Prompts de IA sugerem aumentar/diminuir peso (`HistoryScreen._buildHistoryPrompt`, `WorkoutSessionDetailScreen._buildSessionPrompt`), mas nao ha regra automatica |
++| Recomendacao de progressao | Parcial | Recomendacao textual via Gemini nos prompts; sem algoritmo local |
++| Progressao automatica | Nao encontrado | Nenhum metodo atualiza `WorkoutExercise.defaultWeightKg` com base em historico |
++| Reinicio de ciclo apos aumento de carga | Nao encontrado | Nenhum estado de ciclo de progressao encontrado |
++
++Nao foi encontrado significado definido para `|`, `!` ou `¡`; portanto nao se deve atribuir interpretacao a esses simbolos no estado atual.
++
++# 10. Firebase e persistencia
++
++Integracoes Firebase:
++
++- Firebase Authentication: implementado via `firebase_auth`, `AuthService`, `LoginScreen`, `RegisterScreen`, `AuthScreen`.
++- Cloud Firestore: implementado via `cloud_firestore`, servicos e telas.
++- Firebase Storage: dependencia `firebase_storage` e `storageBucket` em configuracoes, mas nenhum import/uso de `FirebaseStorage` em `lib`.
++- Firebase Functions: nao encontrado.
++- Analytics: nao encontrado.
++- App Check: nao encontrado.
++- Crashlytics: nao encontrado.
++- Firebase Messaging: dependencia, `NotificationService` e codigo comentado em `main.dart`; nao conectado ao fluxo ativo.
++- Hosting: `firebase.json` define `hosting.public: "n"`.
++
++Tabela Firestore:
++
++| Colecao/caminho | Finalidade | Campos encontrados | Escrita por | Leitura por |
++|---|---|---|---|---|
++| `users/{uid}` | Perfil basico do usuario | `uid`, `displayName`, `email`, `photoURL`; no Google tambem `provider`, `lastLoginAt` | `RegisterScreen._handleSignUp`, `UserProfileService.upsertUserProfile` | `UserService.getUser` (nao conectado a telas) |
++| `workouts/{autoId}` | Treinos criados pelo usuario | `name`, `exercises`, `ownerUid`, `ownerName`, `createdAt` | `WorkoutService.createWorkout`, `WorkoutService.updateWorkout`, `WorkoutService.deleteWorkout` | `WorkoutService.getWorkoutsForUser`, usado por `HomeScreen` e `WorkoutListScreen` |
++| `workout_history/{autoId}` | Sessoes executadas | `workoutId`, `workoutName`, `ownerUid`, `performedAt`, `startAt`, `endAt`, `exercises` | `WorkoutHistoryService.saveSession` | `HistoryScreen`, `HistoryScreen._analyzeHistory` |
++| `workout_analysis_logs/{autoId}` | Historico de respostas da IA | `ownerUid`, `workoutId`, `workoutName`, `type`, `prompt`, `response`, `createdAt` | `WorkoutAnalysisLogService.saveLog` | `WorkoutAnalysisLogService.getLogsForUser`, `WorkoutAnalysisHistoryScreen` |
++
++Tratamento de erros:
++
++- Login/cadastro mapeiam alguns erros para `SnackBar`.
++- Streams de Firestore exibem mensagens genericas.
++- Servicos em geral nao encapsulam excecoes; erros sobem para telas.
++- `HistoryScreen._analyzeHistory` imprime excecao e stack trace.
++
++Timestamps:
++
++- `Workout.toMap` e `WorkoutService.createWorkout` usam `FieldValue.serverTimestamp`.
++- `WorkoutHistoryService.saveSession` usa `Timestamp.fromDate` quando informado e `FieldValue.serverTimestamp` como fallback.
++- `WorkoutAnalysisLog.toMap` usa `Timestamp.fromDate` ou `FieldValue.serverTimestamp`.
++
++IDs:
++
++- `workouts`, `workout_history`, `workout_analysis_logs` usam `add`, gerando ID automatico.
++- `users` usa `doc(uid)`.
++- `Workout.fromDocument`, `WorkoutSession.fromMap` e `WorkoutAnalysisLog.fromDocument` preservam `doc.id`.
++
++Consistencia e riscos:
++
++- `WorkoutService.deleteWorkout` nao remove historico associado, risco de sessoes orfas.
++- `workout_history` referencia `workoutId` e `workoutName`; exclusao/renomeacao de treino nao atualiza historico.
++- Edicao de treino pode perder categorias, pois `WorkoutEditScreen` cria `WorkoutExercise` sem `category`.
++- Nao ha transacoes ou batch writes.
++- Nao foram encontrados arquivos de regras de seguranca; o app depende de regras externas para proteger `ownerUid`.
++- Configuracoes Firebase contem chaves publicas de cliente em `firebase_options.dart` e `android/app/google-services.json`; nao foram copiados valores neste documento.
++
++# 11. Gemini e inteligencia artificial
++
++Gemini foi encontrado e esta integrado ao fluxo de historico/detalhe:
++
++- SDK: `flutter_gemini` em `pubspec.yaml`.
++- Inicializacao: `lib/main.dart` importa `flutter_gemini`, le `dotenv.env['GEMINI_API_KEY']` e chama `Gemini.init(apiKey: ..., enableDebugging: true)`.
++- Servico: `WorkoutAnalysisService` em `lib/services/workout_analysis_service.dart`.
++- Metodo: `analyzeText(String prompt)` chama `_gemini.prompt(parts: [Part.text(prompt)])`.
++- Modelo chamado: o codigo nao especifica nome de modelo; usa configuracao padrao do pacote `flutter_gemini`.
++- Dados enviados: prompts montados em `HistoryScreen._buildHistoryPrompt` e `WorkoutSessionDetailScreen._buildSessionPrompt`, contendo nome do treino, datas, exercicios, series, repeticoes, cargas e percepcao `certo/leve/fadiga`.
++- Resposta esperada: texto em `result?.output?.trim()`.
++- Parsing: nao ha parsing estruturado; resposta e exibida como texto.
++- Tratamento de erros: resposta vazia gera `Exception('Resposta vazia do Gemini')`; telas mostram `SnackBar` generico ou mensagem com erro.
++- Exibicao: `HistoryScreen._showAnalysisResult`, `WorkoutSessionDetailScreen._showAnalysisResult`, `WorkoutAnalysisDetailScreen`.
++- Persistencia: `WorkoutAnalysisLogService.saveLog` grava prompt e resposta em `workout_analysis_logs`.
++
++Riscos de seguranca e privacidade:
++
++- `pubspec.yaml` inclui `.env` como asset, o que pode embutir `GEMINI_API_KEY` no app distribuido.
++- `Gemini.init(enableDebugging: true)` em `main.dart` pode aumentar exposicao de detalhes em logs.
++- Prompts com historico de treino e identificadores indiretos sao enviados a servico externo; nao ha consentimento ou politica de privacidade implementada no codigo analisado.
++- Prompts e respostas sao salvos integralmente em Firestore (`WorkoutAnalysisLog.prompt`, `response`).
++
++# 12. Machine Learning e modelo MLP
++
++Busca por TensorFlow, TensorFlow Lite, Keras, ONNX, PyTorch, scripts Python, notebooks, `.h5`, `.tflite`, `.onnx`, `.pkl`, `strong.csv`, `treinoscore_mlp.h5`, `mlp`, classificacao `leve/adequado/pesado` e arquitetura especifica nao encontrou implementacao de MLP no app.
++
++| Elemento | Estado | Evidencia |
++|---|---|---|
++| `google_ml_kit` | Apenas documentado/declarado | Dependencia em `pubspec.yaml`; nenhum uso encontrado em `lib` pela busca |
++| TensorFlow/TFLite/Keras/ONNX/PyTorch | Nao encontrado | Busca direcionada sem arquivos/imports correspondentes |
++| Scripts Python/notebooks | Nao encontrado | `rg --files -g "*.py" -g "*.ipynb"` sem resultados |
++| `strong.csv` | Nao encontrado | Busca por arquivos `.csv` e termo `strong` sem arquivo correspondente |
++| `treinoscore_mlp.h5` | Nao encontrado | Busca por `.h5` e termo `treinoscore` sem arquivo correspondente |
++| Calculo `peso x repeticoes` | Implementado no app, mas nao como ML | `HistoryScreen._calculateVolume` soma `set.reps * set.weightKg` |
++| Agregacao por sessao | Parcial | Volume total por sessao em `HistoryScreen._calculateVolume`; sem vetor de atributos |
++| Entrada com 8 atributos | Nao encontrado | Nenhum modelo/codigo com vetor de 8 features |
++| Dense 32 ReLU, Dropout 0.2, Dense 16 ReLU, Dropout 0.2, Softmax 3 classes | Nao encontrado | Nenhum arquivo de treino/modelo encontrado |
++| Classificacao leve, adequado, pesado | Nao encontrado | Termo `leve` existe como percepcao subjetiva em `WorkoutExecutionScreen`, mas `adequado`/`pesado` nao aparecem como classificador |
++
++Integracao real entre modelo e Flutter: nao encontrada. O app nao carrega assets de modelo, nao executa inferencia local e nao chama API de ML propria. A unica IA operacional e Gemini textual.
++
++# 13. Modelos de dados
++
++## `UserModel`
++
++Arquivo: `lib/models/user.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `uid` | `String` | Nao | nenhum | `toJson`, `fromDocument`, `fromSnap` | `UserService.getUser`, modelo nao conectado a telas |
++| `displayName` | `String` | Nao | nenhum | idem | Perfil |
++| `email` | `String` | Nao | nenhum | idem | Perfil |
++| `photoURL` | `String` | Nao | nenhum | idem | Perfil |
++
++Relacionamento: documento `users/{uid}`. Risco: acessos `doc['campo']` falham se campo ausente.
++
++## `WorkoutExercise`
++
++Arquivo: `lib/models/workout.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `name` | `String` | Nao | `''` no `fromMap` | `toMap`, `fromMap` | Criacao, edicao, execucao |
++| `defaultWeightKg` | `int` | Nao | `0` ou `10` em compatibilidade | `toMap`, `fromMap`, fallback em `Workout.fromDocument` | Peso inicial na execucao |
++| `category` | `String?` | Sim | `null` | `toMap`, `fromMap` | Criacao grava categoria; edicao nao preserva |
++
++## `Workout`
++
++Arquivo: `lib/models/workout.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `id` | `String?` | Sim | `doc.id` no `fromDocument` | `fromDocument` | Editar/excluir/executar |
++| `name` | `String` | Nao | `''` no `fromDocument` | `toMap`, `fromDocument` | Todas as telas de treino |
++| `exercises` | `List<WorkoutExercise>` | Nao | `[]` | lista de mapas ou strings legadas | Criacao, listagem, execucao |
++| `ownerUid` | `String` | Nao | `''` | `toMap`, `fromDocument` | Filtro por usuario |
++| `ownerName` | `String` | Nao | `''` | `toMap`, `fromDocument` | Exibicao/persistencia |
++| `createdAt` | `DateTime?` | Sim | `null` | `Timestamp` | Ordenacao e subtitulo |
++
++Relacionamento: `workouts.ownerUid` referencia `FirebaseAuth.currentUser.uid`.
++
++## `ExerciseSet`
++
++Arquivo: `lib/models/workout_session.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `setNumber` | `int` | Nao | `0` no `fromMap` | `toMap`, `fromMap` | Detalhe e prompts |
++| `reps` | `int` | Nao | `0` no `fromMap` | `toMap`, `fromMap` | Volume, detalhe, IA |
++| `weightKg` | `int` | Nao | `0` no `fromMap` | `toMap`, `fromMap` | Volume, detalhe, IA |
++
++## `ExerciseExecution`
++
++Arquivo: `lib/models/workout_session.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `exerciseName` | `String` | Nao | `''` no `fromMap` | `toMap`, `fromMap` | Execucao/historico |
++| `sets` | `List<ExerciseSet>` | Nao | `[]` | suporta formato legado com `sets/reps/weightKg` | Execucao/historico |
++| `perceivedEffort` | `String?` | Sim | `null` | `toMap`, `fromMap` | `certo`, `leve`, `fadiga` |
++| `completed` | `bool` | Nao | `false` | `toMap`, `fromMap`, `copyWith` | Status do exercicio na sessao |
++
++## `WorkoutSession`
++
++Arquivo: `lib/models/workout_session.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `id` | `String?` | Sim | `doc.id` externo | `fromMap(id:)` | Detalhe/historico |
++| `workoutId` | `String` | Nao | `''` | `toMap`, `fromMap` | Referencia treino |
++| `workoutName` | `String` | Nao | `''` | `toMap`, `fromMap` | Exibicao/filtro IA |
++| `ownerUid` | `String` | Nao | `''` | `toMap`, `fromMap` | Filtro usuario |
++| `performedAt` | `DateTime?` | Sim | server timestamp se ausente | `Timestamp` | Ordenacao historico |
++| `startAt` | `DateTime?` | Sim | `null` no modelo, server timestamp no servico se ausente | `Timestamp` | Duracao |
++| `endAt` | `DateTime?` | Sim | idem | `Timestamp` | Duracao |
++| `exercises` | `List<ExerciseExecution>` | Nao | `[]` | lista de mapas | Historico/detalhe/IA |
++
++## `WorkoutAnalysisLog`
++
++Arquivo: `lib/models/workout_analysis_log.dart`.
++
++| Campo | Tipo | Opcional | Padrao | Serializacao/desserializacao | Uso |
++|---|---|---|---|---|---|
++| `id` | `String` | Nao | `doc.id` no `fromDocument` | `fromDocument` | Historico de analises |
++| `ownerUid` | `String` | Nao | `''` | `toMap`, `fromDocument` | Filtro usuario |
++| `workoutId` | `String?` | Sim | `null` | `toMap`, `fromDocument` | Referencia treino |
++| `workoutName` | `String?` | Sim | `null` | `toMap`, `fromDocument` | Exibicao |
++| `type` | `String` | Nao | `unknown` | `toMap`, `fromDocument` | `history` ou `session` |
++| `prompt` | `String` | Nao | `''` | `toMap`, `fromDocument` | Auditoria IA |
++| `response` | `String` | Nao | `''` | `toMap`, `fromDocument` | Exibicao IA |
++| `createdAt` | `DateTime?` | Sim | server timestamp se ausente | `Timestamp` | Ordenacao |
++
++# 14. Mapa de dependencias internas
++
++```text
++AuthScreen
++  -> AuthService
++    -> FirebaseAuth
++
++LoginScreen
++  -> AuthService
++    -> FirebaseAuth / GoogleSignIn / UserProfileService
++      -> Firestore users
++
++RegisterScreen
++  -> FirebaseAuth
++  -> FirebaseFirestore users
++  -> AuthService para Google
++
++Menu2
++  -> HomeScreen / WorkoutCreationScreen / WorkoutListScreen / HistoryScreen
++
++HomeScreen
++  -> WorkoutService
++    -> Firestore workouts
++
++WorkoutCreationScreen
++  -> WorkoutService
++    -> Firestore workouts
++
++WorkoutListScreen
++  -> WorkoutService
++    -> Firestore workouts
++  -> WorkoutExecutionScreen
++  -> WorkoutEditScreen
++
++WorkoutEditScreen
++  -> WorkoutService
++    -> Firestore workouts
++
++WorkoutExecutionScreen
++  -> WorkoutHistoryService
++    -> Firestore workout_history
++
++HistoryScreen
++  -> Firestore workout_history
++  -> WorkoutAnalysisService
++    -> Gemini
++  -> WorkoutAnalysisLogService
++    -> Firestore workout_analysis_logs
++
++WorkoutSessionDetailScreen
++  -> WorkoutAnalysisService
++    -> Gemini
++  -> WorkoutAnalysisLogService
++    -> Firestore workout_analysis_logs
++
++WorkoutAnalysisHistoryScreen
++  -> WorkoutAnalysisLogService
++    -> Firestore workout_analysis_logs
++```
++
++```mermaid
++flowchart TD
++    AuthScreen --> AuthService --> FirebaseAuth
++    LoginScreen --> AuthService
++    RegisterScreen --> FirebaseAuth
++    RegisterScreen --> Users[(Firestore users)]
++    AuthService --> UserProfileService --> Users
++    Menu2 --> HomeScreen
++    Menu2 --> WorkoutCreationScreen
++    Menu2 --> WorkoutListScreen
++    Menu2 --> HistoryScreen
++    HomeScreen --> WorkoutService --> Workouts[(Firestore workouts)]
++    WorkoutCreationScreen --> WorkoutService
++    WorkoutListScreen --> WorkoutService
++    WorkoutListScreen --> WorkoutExecutionScreen
++    WorkoutListScreen --> WorkoutEditScreen
++    WorkoutEditScreen --> WorkoutService
++    WorkoutExecutionScreen --> WorkoutHistoryService --> WorkoutHistory[(Firestore workout_history)]
++    HistoryScreen --> WorkoutHistory
++    HistoryScreen --> WorkoutAnalysisService --> Gemini
++    WorkoutSessionDetailScreen --> WorkoutAnalysisService
++    HistoryScreen --> WorkoutAnalysisLogService --> AnalysisLogs[(Firestore workout_analysis_logs)]
++    WorkoutSessionDetailScreen --> WorkoutAnalysisLogService
++    WorkoutAnalysisHistoryScreen --> WorkoutAnalysisLogService
++```
++
++# 15. Funcionalidades por estado
++
++## Implementado e aparentemente funcional
++
++- Inicializacao Firebase: `lib/main.dart`, `lib/firebase_options.dart`.
++- Inicializacao Gemini com `.env`: `lib/main.dart`.
++- Autenticacao email/senha: `LoginScreen._handleSignIn`, `RegisterScreen._handleSignUp`, `AuthService.signInWithEmail`.
++- Login Google: `AuthService.signInWithGoogle`.
++- Perfil basico em `users`: `RegisterScreen._handleSignUp`, `UserProfileService.upsertUserProfile`.
++- Criacao simples de treino: `WorkoutCreationScreen._saveWorkout`, `WorkoutService.createWorkout`.
++- Listagem de treinos: `WorkoutListScreen`, `WorkoutService.getWorkoutsForUser`.
++- Edicao basica de treino: `WorkoutEditScreen._saveWorkout`, `WorkoutService.updateWorkout`.
++- Exclusao de treino: `WorkoutListScreen._confirmDelete`, `WorkoutService.deleteWorkout`.
++- Execucao basica com series/reps/cargas: `WorkoutExecutionScreen`.
++- Historico basico de sessoes: `HistoryScreen`, `WorkoutHistoryService.saveSession`.
++- Volume total por sessao: `HistoryScreen._calculateVolume`.
++- Analise textual de sessao e historico por Gemini: `WorkoutAnalysisService`, `HistoryScreen`, `WorkoutSessionDetailScreen`.
++- Historico de analises IA: `WorkoutAnalysisLogService`, `WorkoutAnalysisHistoryScreen`.
++
++## Parcialmente implementado
++
++- Home com treino sugerido: `HomeScreen` escolhe apenas `workouts.first`, sem criterio de agenda/progressao.
++- Perfil de usuario: grava dados, mas nao ha tela de perfil nem validacao de existencia.
++- Logout: metodo existe em `AuthService.signOut`, mas nao ha acao de UI encontrada.
++- Edicao de treino: usa lista de exercicios diferente da criacao e nao preserva `category`.
++- Evolucao de carga: dados existem no historico e podem ser enviados ao Gemini, mas nao ha calculo local estruturado.
++- Notificacoes: `NotificationService` existe, mas `_setupPushNotifications` esta comentado em `main.dart`.
++- Firebase Storage: dependencia/configuracao existem, mas nao ha uso.
++- Machine Learning: `google_ml_kit` esta declarado, mas sem uso no codigo.
++
++## Planejado ou mencionado
++
++- TODO de applicationId e signing config em `android/app/build.gradle`.
++- Push notifications em bloco comentado de `lib/main.dart`.
++- IA de historico e sessao aparece implementada e tambem sugerida por nomes/commits (`git log` mostrou commits relacionados a "historico de IA"), mas a parte comprovada e o codigo atual.
++- Compatibilidade com formato antigo de exercicios em `Workout.fromDocument` e `ExerciseExecution.fromMap`.
++
++## Nao encontrado
++
++- Cadastro persistente/livre de exercicios.
++- Fichas/modelos reutilizaveis separados.
++- Duplicacao de treino.
++- Intervalos de descanso.
++- Observacoes por treino, exercicio, sessao ou serie.
++- Progressao automatica.
++- Indicadores `|`, `!`, `¡` com significado funcional.
++- Regra de quatro registros concluidos.
++- Progressao `3x10`, `3x12`, `3x15` e aumento de peso por ciclo.
++- Graficos.
++- Recordes pessoais.
++- Filtros avancados de historico.
++- Firebase Functions, Analytics, App Check, Crashlytics.
++- Uso real de Firebase Storage.
++- Uso real de ML Kit.
++- `strong.csv`.
++- `treinoscore_mlp.h5`.
++- Modelo MLP e classificacao leve/adequado/pesado.
++
++# 16. Problemas e riscos identificados
++
++| Severidade | Problema/Risco | Evidencia |
++|---|---|---|
++| Alto | Dependencias usadas pelo app estao em `dev_dependencies`, gerando risco de empacotamento/analise incorreta | `pubspec.yaml`; `flutter analyze` com varios `depend_on_referenced_packages` |
++| Alto | `.env` esta declarado como asset, podendo expor `GEMINI_API_KEY` no app distribuido | `pubspec.yaml` assets inclui `.env`; `lib/main.dart` le `GEMINI_API_KEY` |
++| Alto | Nao ha regras Firestore/Storage no repositorio; seguranca depende de configuracao externa nao auditada | `rg --files` nao listou `firestore.rules`/`storage.rules`; acessos Firestore em servicos |
++| Medio | Logout nao acessivel pela interface | `AuthService.signOut` existe; busca por `signOut` nao encontrou chamada em telas |
++| Medio | Edicao usa catalogo diferente da criacao, podendo remover/invisibilizar exercicios originais | `WorkoutCreationScreen._exercisesByCategory`; `WorkoutEditScreen._availableExercises` |
++| Medio | Excluir treino nao remove historico relacionado, gerando referencias orfas | `WorkoutService.deleteWorkout`; `WorkoutHistoryService.saveSession` usa `workoutId` |
++| Medio | Sessao pode salvar exercicios nao concluidos e sem series se pelo menos uma serie existir no treino todo | `WorkoutExecutionScreen._finishWorkout` valida apenas `any sets.isNotEmpty` |
++| Medio | Gemini e chamado mesmo se `GEMINI_API_KEY` estiver ausente; erro so aparece depois nas telas de IA | `main.dart`; `WorkoutAnalysisService.analyzeText` |
++| Medio | Prompts e respostas de IA sao armazenados integralmente, com possivel dado pessoal/sensivel de treino | `WorkoutAnalysisLog.toMap`, `HistoryScreen._saveAnalysisLog`, `WorkoutSessionDetailScreen._saveAnalysisLog` |
++| Medio | `UserService.getUser` usa `currentUser!` e campos obrigatorios via `snap['campo']`, com risco de excecao | `lib/services/user_service.dart`, `lib/models/user.dart` |
++| Medio | Teste de widget esta desatualizado e falha | `test/widget_test.dart`; saida de `flutter test` |
++| Baixo | Varios `print` em codigo de producao | `flutter analyze`; `HistoryScreen`, `HomeScreen`, `RegisterScreen`, `WorkoutSessionDetailScreen` |
++| Baixo | `FirebaseMessaging` importado em `main.dart` sem uso ativo | `lib/main.dart`; `flutter analyze unused_import` |
++| Baixo | Widgets nao utilizados adicionam codigo morto ou legado | `lib/components/editor.dart`, `lib/components/square_tile.dart`; sem referencias encontradas |
++| Informativo | Texto com caracteres mojibake aparece em varios arquivos, sugerindo problema de encoding historico | Saidas de leitura de `lib/screens/*.dart` mostram `UsuÃ¡rio`, `HistÃ³rico`, etc. codificados incorretamente |
++| Informativo | `firebase.json` aponta Hosting para pasta `n`, que contem pagina padrao Firebase, nao build Flutter | `firebase.json`, `n/index.html` |
++
++# 17. Testes e qualidade
++
++Testes encontrados:
++
++- `test/widget_test.dart` contem o teste padrao `Counter increments smoke test`.
++- Nao foram encontrados testes unitarios especificos para modelos, servicos, auth, treino, historico ou IA.
++- Nao foram encontrados testes de integracao.
++- Nao foram encontrados mocks.
++- Cobertura nao foi executada e nao ha evidencia de relatorio de cobertura.
++
++Resultado de `flutter analyze`:
++
++- Comando executado: `flutter analyze`.
++- Resultado: falhou com `64 issues found`.
++- Principais categorias: `depend_on_referenced_packages` por dependencias runtime em `dev_dependencies`, `unused_import`, `unnecessary_cast`, `use_build_context_synchronously`, `avoid_print`, `control_flow_in_finally`, lints de construtores e tipos.
++
++Resultado de `flutter test`:
++
++- Comando executado: `flutter test`.
++- Resultado: falhou.
++- Falha 1: `[core/no-app] No Firebase App '[DEFAULT]' has been created - call Firebase.initializeApp()` ao construir `MyApp` em `test/widget_test.dart`.
++- Falha 2: teste espera textos `0` e `1` e icone `Icons.add`, mas o app atual nao e o contador do template.
++- Evidencias: `test/widget_test.dart` e saida do comando `flutter test`.
++
++# 18. Proximas etapas recomendadas
++
++## Prioridade imediata
++
++- Mover dependencias runtime de `dev_dependencies` para `dependencies` em `pubspec.yaml` e validar build/analyze.
++- Remover `.env` dos assets e migrar uso de chave Gemini para estrategia segura.
++- Definir/revisar regras Firestore/Storage e inclui-las no repositorio.
++- Atualizar ou substituir `test/widget_test.dart` por teste compativel com Firebase inicializado/mockado.
++- Adicionar logout acessivel em `Menu2`.
++
++## Curto prazo
++
++- Consolidar catalogo de exercicios em modelo/servico unico, evitando listas divergentes entre criacao e edicao.
++- Adicionar modelo de exercicio persistente se cadastro livre for requisito.
++- Preservar ordem e categoria de exercicios com campos explicitos.
++- Definir comportamento para cancelar ou salvar rascunho de sessao.
++- Melhorar validacoes de treino e sessao: series minimas, exercicios obrigatorios, campos vazios, limites de carga/reps.
++
++## Medio prazo
++
++- Implementar historico por exercicio com filtros, comparacoes, volume por periodo e evolucao de carga.
++- Implementar sistema de progressao deterministico se for requisito, incluindo regras `3x10`, `3x12`, `3x15`, aumento de carga e reinicio de ciclo.
++- Definir significado dos indicadores `|`, `!`, `¡` antes de codificar qualquer logica.
++- Separar fichas/modelos reutilizaveis de sessoes executadas.
++- Criar testes unitarios para modelos/serializacao e servicos com mocks.
++
++## Opcional
++
++- Integrar Gemini por backend/proxy para proteger chave e aplicar controles de privacidade.
++- Avaliar se ML Kit e necessario; remover se nao for usado.
++- Se MLP for requisito, adicionar pipeline fora do app, modelo exportado para formato suportado e camada de inferencia testada no Flutter.
++- Adicionar graficos e indicadores visuais apos consolidar historico.
++
++# 19. Arquivos mais importantes
++
++| Ordem | Arquivo | Motivo |
++|---|---|---|
++| 1 | `lib/main.dart` | Inicializacao Firebase/Gemini e rotas nomeadas |
++| 2 | `lib/screens/auth.dart` | Decisao de fluxo por autenticacao |
++| 3 | `lib/menu2.dart` | Navegacao principal real do app |
++| 4 | `lib/services/auth_service.dart` | Login email/Google e logout existente |
++| 5 | `lib/screens/login.dart` | UI e tratamento de login |
++| 6 | `lib/screens/register.dart` | Cadastro e escrita direta em `users` |
++| 7 | `lib/models/workout.dart` | Estrutura persistida dos treinos |
++| 8 | `lib/services/workout_service.dart` | CRUD de `workouts` |
++| 9 | `lib/screens/workout_creation_screen.dart` | Fluxo de criacao e catalogo fixo |
++| 10 | `lib/screens/workout_list_screen.dart` | Entrada para iniciar/editar/excluir |
++| 11 | `lib/screens/workout_edit_screen.dart` | Edicao e divergencia de catalogo |
++| 12 | `lib/screens/workout_execution_screen.dart` | Execucao e gravacao de sessoes |
++| 13 | `lib/models/workout_session.dart` | Modelo de series, reps, carga e historico |
++| 14 | `lib/services/workout_history_service.dart` | Escrita em `workout_history` |
++| 15 | `lib/screens/history_screen.dart` | Consulta de historico, volume e IA |
++| 16 | `lib/screens/workout_session_detail_screen.dart` | Detalhe de sessao e analise IA |
++| 17 | `lib/services/workout_analysis_service.dart` | Chamada Gemini |
++| 18 | `lib/models/workout_analysis_log.dart` | Estrutura do log de IA |
++| 19 | `pubspec.yaml` | Dependencias e assets relevantes |
++| 20 | `firebase.json` | Configuracao Firebase/Hosting |
++
++# 20. Conclusao
++
++Fluxo atual real: o app inicia Firebase/Gemini, verifica autenticacao em `AuthScreen`, mostra login/registro ou `Menu2`, permite criar treinos simples em `workouts`, listar/editar/excluir esses treinos, executar uma sessao registrando series/repeticoes/cargas/percepcao em memoria e salvar o resultado em `workout_history`. O historico lista sessoes, calcula volume total simples, abre detalhes e pode enviar sessao ou historico do mesmo `workoutName` ao Gemini, salvando resposta em `workout_analysis_logs`.
++
++O que ja funciona pelo codigo: autenticacao basica, perfil basico, CRUD basico de treinos, execucao basica, historico basico, volume total e analise textual via Gemini. Evidencias: `lib/screens/auth.dart`, `lib/services/auth_service.dart`, `lib/screens/workout_creation_screen.dart`, `lib/services/workout_service.dart`, `lib/screens/workout_execution_screen.dart`, `lib/services/workout_history_service.dart`, `lib/screens/history_screen.dart`, `lib/services/workout_analysis_service.dart`.
++
++O que ainda esta incompleto: cadastro persistente de exercicios, ficha/template reutilizavel, logout na UI, catalogo consistente de exercicios, progressao estruturada, evolucao de carga local, graficos, recordes, filtros, regras Firebase versionadas, testes reais e seguranca da chave Gemini.
++
++Logica de progressao: nao foi encontrada implementacao de simbolos `|`, `!`, `¡`, quatro registros concluidos, ciclo `3x10 -> 3x12 -> 3x15` ou aumento automatico de carga. Ha apenas recomendacao textual potencial via Gemini em `HistoryScreen._buildHistoryPrompt` e `WorkoutSessionDetailScreen._buildSessionPrompt`.
++
++Gemini: integrado de fato via `flutter_gemini`, `.env`, `Gemini.init` e `WorkoutAnalysisService.analyzeText`, com exibicao e persistencia de respostas.
++
++MLP: nao integrado. Nao foram encontrados `strong.csv`, `treinoscore_mlp.h5`, scripts Python/notebooks, arquivos de modelo, TensorFlow/TFLite/Keras/ONNX/PyTorch, vetor de 8 atributos ou classificacao leve/adequado/pesado. `google_ml_kit` esta apenas declarado em `pubspec.yaml`.
++
++Principais bloqueadores para concluir o projeto: corrigir configuracao de dependencias, proteger credenciais, versionar regras de seguranca, consolidar modelos/catalogo de exercicios, definir regras de progressao, implementar historico/evolucao estruturados e substituir o teste template por testes do fluxo real.

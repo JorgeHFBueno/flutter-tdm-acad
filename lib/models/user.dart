@@ -23,8 +23,7 @@ class UserModel {
     );
   }
 
-  Map<String, dynamic> toJson() =>
-      {
+  Map<String, dynamic> toJson() => {
         'uid': uid,
         'displayName': displayName,
         'email': email,
