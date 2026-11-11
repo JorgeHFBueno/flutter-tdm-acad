@@ -58,7 +58,7 @@ class RetroTheme {
         selectedColor: RetroColors.textOnAmber,
         selectedTileColor: RetroColors.amber,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: RetroColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -67,7 +67,7 @@ class RetroTheme {
         ),
       ),
       dividerTheme: const DividerThemeData(color: RetroColors.border),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: RetroColors.surface,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
@@ -202,7 +202,7 @@ class RetroTheme {
         ),
         textStyle: const TextStyle(color: RetroColors.text),
       ),
-      tabBarTheme: const TabBarTheme(
+      tabBarTheme: const TabBarThemeData(
         labelColor: RetroColors.amber,
         unselectedLabelColor: RetroColors.mutedText,
         indicatorColor: RetroColors.amber,
