@@ -3,9 +3,16 @@ import 'workout_session.dart';
 
 enum WorkoutExecutionPhase {
   warmup,
-  warmupTargetExercise,
-  remainingExercises,
-  finished,
+  executingExercise,
+  choosingNextExercise,
+  finishingWorkout,
+  completed,
+}
+
+enum SessionExerciseCompletionState {
+  completed,
+  partial,
+  notDone,
 }
 
 class SessionExerciseEntry {
@@ -29,6 +36,14 @@ class SessionExerciseEntry {
       execution: execution ?? this.execution,
     );
   }
+}
+
+double workoutExerciseProgress(Iterable<SessionExerciseEntry> entries) {
+  final canonicalEntries = entries.toList();
+  if (canonicalEntries.isEmpty) return 0;
+  final completed =
+      canonicalEntries.where((entry) => entry.execution.completed).length;
+  return (completed / canonicalEntries.length).clamp(0, 1).toDouble();
 }
 
 ExerciseExecution createWarmupExecution({
@@ -59,6 +74,9 @@ List<SessionExerciseEntry> createPendingEntriesFromMachines(
         execution: ExerciseExecution(
           exerciseId: orderedMachines[index].exerciseId,
           exerciseName: orderedMachines[index].exerciseName,
+          scientificName: orderedMachines[index].catalogScientificName,
+          category: orderedMachines[index].category,
+          type: orderedMachines[index].catalogType,
           sets: const [],
           configuredSets: orderedMachines[index].currentSets,
           configuredRepetitions: orderedMachines[index].currentRepetitions,
@@ -71,6 +89,7 @@ List<SessionExerciseEntry> createPendingEntriesFromMachines(
 
 bool shouldCountMachineCompletion(ExerciseExecution execution) {
   if (execution.isWarmup || !execution.completed) return false;
+  if (execution.status != ExerciseExecutionStatus.completed) return false;
   if ((execution.exerciseId ?? '').trim().isEmpty) return false;
   final normalizedEffort = PerceivedEffort.normalize(execution.perceivedEffort);
   return normalizedEffort == PerceivedEffort.light ||
@@ -126,6 +145,40 @@ List<SessionExerciseEntry> movePendingDown(
   return updated;
 }
 
+int firstPendingEntryIndex(List<SessionExerciseEntry> entries) {
+  return entries.indexWhere((entry) => !entry.execution.completed);
+}
+
+SessionExerciseCompletionState classifyExerciseExecution(
+  ExerciseExecution execution,
+) {
+  if (execution.completed &&
+      execution.status == ExerciseExecutionStatus.completed) {
+    return SessionExerciseCompletionState.completed;
+  }
+  if (execution.hasRegisteredWork) {
+    return SessionExerciseCompletionState.partial;
+  }
+  if (execution.completed &&
+      execution.status == ExerciseExecutionStatus.partial) {
+    return SessionExerciseCompletionState.partial;
+  }
+  return SessionExerciseCompletionState.notDone;
+}
+
+List<SessionExerciseEntry> replaceEntryExecution(
+  List<SessionExerciseEntry> entries,
+  int originalIndex,
+  ExerciseExecution execution,
+) {
+  return [
+    for (final entry in entries)
+      entry.originalIndex == originalIndex
+          ? entry.copyWith(execution: execution)
+          : entry,
+  ];
+}
+
 class CompletedExerciseLists {
   final List<SessionExerciseEntry> pending;
   final List<SessionExerciseEntry> completed;
@@ -164,12 +217,12 @@ bool completionAllowsCurrentSets(ExerciseExecution execution) {
 
 List<ExerciseExecution> buildSessionExerciseOrder({
   required ExerciseExecution warmup,
-  required List<SessionExerciseEntry> completed,
-  required List<SessionExerciseEntry> pending,
+  List<SessionExerciseEntry> completed = const [],
+  List<SessionExerciseEntry> pending = const [],
+  List<SessionExerciseEntry>? entries,
 }) {
   return [
     warmup,
-    ...completed.map((entry) => entry.execution),
-    ...pending.map((entry) => entry.execution),
+    ...(entries ?? [...completed, ...pending]).map((entry) => entry.execution),
   ];
 }

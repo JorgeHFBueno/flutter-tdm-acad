@@ -22,6 +22,31 @@ void main() {
   }
 
   group('workout execution flow', () {
+    test('calculates canonical exercise progress and protects empty workouts',
+        () {
+      final entries = createPendingEntriesFromMachines([
+        _machine('a', 'A', 'C', 1, 1, 1),
+        _machine('b', 'B', 'C', 1, 1, 1),
+        _machine('c', 'C', 'C', 1, 1, 1),
+        _machine('d', 'D', 'C', 1, 1, 1),
+      ]);
+
+      List<SessionExerciseEntry> withCompleted(int count) => [
+            for (var index = 0; index < entries.length; index++)
+              entries[index].copyWith(
+                execution: entries[index].execution.copyWith(
+                      completed: index < count,
+                    ),
+              ),
+          ];
+
+      expect(workoutExerciseProgress(const []), 0);
+      expect(workoutExerciseProgress(withCompleted(0)), 0);
+      expect(workoutExerciseProgress(withCompleted(1)), .25);
+      expect(workoutExerciseProgress(withCompleted(3)), .75);
+      expect(workoutExerciseProgress(withCompleted(4)), 1);
+    });
+
     test('creates warmup as first session item', () {
       final warmup = createWarmupExecution(
         targetExerciseName: 'Supino reto',
@@ -136,6 +161,35 @@ void main() {
         'Supino reto',
         'Remada baixa',
       ]);
+    });
+
+    test('finds first pending entry and classifies incomplete executions', () {
+      final entries = createPendingEntriesFromMachines(machines);
+      final updated = replaceEntryExecution(
+        entries,
+        0,
+        entries.first.execution.copyWith(
+          completed: true,
+          perceivedEffort: PerceivedEffort.adequate,
+          status: ExerciseExecutionStatus.completed,
+        ),
+      );
+
+      expect(firstPendingEntryIndex(updated), 1);
+      expect(
+        classifyExerciseExecution(updated.first.execution),
+        SessionExerciseCompletionState.completed,
+      );
+      expect(
+        classifyExerciseExecution(entries[1].execution.copyWith(
+          sets: [ExerciseSet(setNumber: 1, reps: 5, weightKg: 10)],
+        )),
+        SessionExerciseCompletionState.partial,
+      );
+      expect(
+        classifyExerciseExecution(entries[2].execution),
+        SessionExerciseCompletionState.notDone,
+      );
     });
 
     test('completion rules distinguish warmup, performed and skipped exercises',

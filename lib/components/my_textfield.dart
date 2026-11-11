@@ -6,6 +6,8 @@ class MyTextField extends StatefulWidget {
   final Widget icon;
   final bool obscureText;
   final bool capitalization;
+  final TextInputType? keyboardType;
+  final Iterable<String>? autofillHints;
 
   const MyTextField({
     super.key,
@@ -14,6 +16,8 @@ class MyTextField extends StatefulWidget {
     required this.icon,
     required this.obscureText,
     required this.capitalization,
+    this.keyboardType,
+    this.autofillHints,
   });
 
   @override
@@ -25,44 +29,37 @@ class MyTextField extends StatefulWidget {
 class MyTextFieldState extends State<MyTextField> {
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 55,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 25),
-        child: TextFormField(
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Preenchimento obrigatório!';
-            }
-            return null;
-          },
-          onFieldSubmitted: (value) {
-            setState(() {
-              widget.controller.text = value;
-            });
-          },
-          textCapitalization: widget.capitalization
-              ? TextCapitalization.words
-              : TextCapitalization.none,
-          controller: widget.controller,
-          obscureText: widget.obscureText,
-          decoration: InputDecoration(
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20.0),
-                borderSide: BorderSide(color: Colors.grey.shade400),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20.0),
-                borderSide: BorderSide(color: Colors.grey.shade600),
-              ),
-              filled: true,
-              fillColor: Colors.grey.shade300,
-              hintText: widget.hintText,
-              hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 15),
-              prefixIcon: Padding(
-                padding: const EdgeInsets.all(0.0),
-                child: widget.icon,
-              )),
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 25),
+      child: TextFormField(
+        keyboardType: widget.keyboardType,
+        autofillHints: widget.autofillHints,
+        validator: (value) {
+          if (value == null || value.isEmpty) {
+            return 'Preenchimento obrigatorio!';
+          }
+          return null;
+        },
+        onFieldSubmitted: (value) {
+          setState(() {
+            widget.controller.text = value;
+          });
+        },
+        textCapitalization: widget.capitalization
+            ? TextCapitalization.words
+            : TextCapitalization.none,
+        controller: widget.controller,
+        obscureText: widget.obscureText,
+        decoration: InputDecoration(
+          filled: true,
+          hintText: widget.hintText,
+          labelText: widget.hintText,
+          prefixIconColor: theme.colorScheme.primary,
+          prefixIcon: Padding(
+            padding: const EdgeInsets.all(0),
+            child: widget.icon,
+          ),
         ),
       ),
     );

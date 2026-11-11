@@ -85,4 +85,14 @@
 - `ETAPA_5_CONSOLIDACAO_TECNICA.md`: consolidacao atual.
 - `ARQUITETURA_ATUAL_VANGUARD.md`: arquitetura final atual.
 - `INVENTARIO_TECNICO_VANGUARD.md`: inventario tecnico.
+# Adendo — Etapa 6
+
+- `lib/models/machine_catalog_item.dart`: contrato Firestore, categorias e tipos.
+- `lib/models/machine_catalog_view.dart`: resolução, busca, filtros e ordenação.
+- `lib/data/machine_catalog_seed.dart`: adaptação dos 31 IDs legados para seed.
+- `lib/services/machine_catalog_service.dart`: leitura, importação e CRUD global.
+- `lib/screens/machine_catalog_screen.dart`: catálogo combinado com perfis.
+- `test/machine_catalog_test.dart`: testes puros do catálogo e integrações.
+- `lib/data/exercise_catalog.dart`: mantido somente para seed e compatibilidade
+  defensiva legada; não é mais fonte da tela de Máquinas ou seleção de treinos.
 

@@ -145,9 +145,26 @@ class PerceivedEffort {
   }
 }
 
+class ExerciseExecutionStatus {
+  static const pending = 'pending';
+  static const completed = 'completed';
+  static const partial = 'partial';
+  static const skipped = 'skipped';
+
+  static const values = <String>{pending, completed, partial, skipped};
+
+  static String normalize(String? value, {required bool completed}) {
+    if (value != null && values.contains(value)) return value;
+    return completed ? ExerciseExecutionStatus.completed : pending;
+  }
+}
+
 class ExerciseExecution {
   final String? exerciseId;
   final String exerciseName;
+  final String? scientificName;
+  final String? category;
+  final String? type;
   final List<ExerciseSet> sets;
   final String? perceivedEffort;
   final bool completed;
@@ -158,10 +175,14 @@ class ExerciseExecution {
   final int? configuredRepetitions;
   final double? configuredWeightKg;
   final String? observationSnapshot;
+  final String status;
 
   ExerciseExecution({
     this.exerciseId,
     required this.exerciseName,
+    this.scientificName,
+    this.category,
+    this.type,
     required this.sets,
     this.perceivedEffort,
     this.completed = false,
@@ -172,11 +193,18 @@ class ExerciseExecution {
     this.configuredRepetitions,
     this.configuredWeightKg,
     this.observationSnapshot,
-  });
+    String? status,
+  }) : status = ExerciseExecutionStatus.normalize(
+          status,
+          completed: completed,
+        );
 
   ExerciseExecution copyWith({
     String? exerciseId,
     String? exerciseName,
+    Object? scientificName = _notProvided,
+    Object? category = _notProvided,
+    Object? type = _notProvided,
     List<ExerciseSet>? sets,
     String? perceivedEffort,
     bool? completed,
@@ -187,10 +215,16 @@ class ExerciseExecution {
     Object? configuredRepetitions = _notProvided,
     Object? configuredWeightKg = _notProvided,
     Object? observationSnapshot = _notProvided,
+    String? status,
   }) {
     return ExerciseExecution(
       exerciseId: exerciseId ?? this.exerciseId,
       exerciseName: exerciseName ?? this.exerciseName,
+      scientificName: scientificName == _notProvided
+          ? this.scientificName
+          : scientificName as String?,
+      category: category == _notProvided ? this.category : category as String?,
+      type: type == _notProvided ? this.type : type as String?,
       sets: sets ?? this.sets,
       perceivedEffort: perceivedEffort ?? this.perceivedEffort,
       completed: completed ?? this.completed,
@@ -209,12 +243,16 @@ class ExerciseExecution {
       observationSnapshot: observationSnapshot == _notProvided
           ? this.observationSnapshot
           : observationSnapshot as String?,
+      status: status ?? this.status,
     );
   }
 
   Map<String, dynamic> toMap() => {
         'exerciseId': exerciseId,
         'exerciseName': exerciseName,
+        if (scientificName != null) 'scientificName': scientificName,
+        if (category != null) 'category': category,
+        if (type != null) 'type': type,
         'sets': sets.map((s) => s.toMap()).toList(),
         'perceivedEffort': perceivedEffort,
         'completed': completed,
@@ -228,6 +266,7 @@ class ExerciseExecution {
           'configuredWeightKg': configuredWeightKg,
         if (observationSnapshot != null)
           'observationSnapshot': observationSnapshot,
+        'status': status,
       };
 
   factory ExerciseExecution.fromMap(Map<String, dynamic> map) {
@@ -250,6 +289,9 @@ class ExerciseExecution {
     return ExerciseExecution(
       exerciseId: _readOptionalString(map['exerciseId']),
       exerciseName: map['exerciseName']?.toString() ?? '',
+      scientificName: _readOptionalString(map['scientificName']),
+      category: _readOptionalString(map['category']),
+      type: _readOptionalString(map['type']),
       sets: setsList
           .map((s) => ExerciseSet.fromMap(Map<String, dynamic>.from(s)))
           .toList(),
@@ -264,11 +306,31 @@ class ExerciseExecution {
       configuredWeightKg:
           _readOptionalPositiveDouble(map['configuredWeightKg']),
       observationSnapshot: _readOptionalString(map['observationSnapshot']),
+      status: _readOptionalString(map['status']),
     );
   }
 
   double get volume => calculateSetsVolume(sets);
+
+  bool get hasRegisteredWork => sets.isNotEmpty;
+
+  bool get isGoalReached => isExerciseGoalReached(this);
 }
+
+class WorkoutSessionStatus {
+  static const inProgress = 'inProgress';
+  static const completed = 'completed';
+  static const abandoned = 'abandoned';
+
+  static const values = <String>{inProgress, completed, abandoned};
+
+  static String normalize(String? value, {DateTime? completedAt}) {
+    if (value != null && values.contains(value)) return value;
+    return completedAt != null ? completed : '';
+  }
+}
+
+const int workoutSessionSchemaVersion = 2;
 
 class WorkoutSession {
   final String? id;
@@ -278,8 +340,16 @@ class WorkoutSession {
   final DateTime? performedAt;
   final DateTime? startAt;
   final DateTime? endAt;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+  final DateTime? completedAt;
   final List<ExerciseExecution> exercises;
   final bool machineHistoryCountApplied;
+  final String status;
+  final String executionPhase;
+  final String? activeExerciseId;
+  final int? activeOriginalIndex;
+  final int schemaVersion;
 
   WorkoutSession({
     this.id,
@@ -289,22 +359,39 @@ class WorkoutSession {
     this.performedAt,
     this.startAt,
     this.endAt,
+    this.createdAt,
+    this.updatedAt,
+    this.completedAt,
     required this.exercises,
     this.machineHistoryCountApplied = false,
-  });
+    String? status,
+    this.executionPhase = 'warmup',
+    this.activeExerciseId,
+    this.activeOriginalIndex,
+    this.schemaVersion = workoutSessionSchemaVersion,
+  }) : status = status ?? '';
 
   Map<String, dynamic> toMap() {
     return {
       'workoutId': workoutId,
       'workoutName': workoutName,
       'ownerUid': ownerUid,
-      'performedAt': performedAt != null
-          ? Timestamp.fromDate(performedAt!)
-          : FieldValue.serverTimestamp(),
+      if (performedAt != null) 'performedAt': Timestamp.fromDate(performedAt!),
       'startAt': startAt != null ? Timestamp.fromDate(startAt!) : null,
       'endAt': endAt != null ? Timestamp.fromDate(endAt!) : null,
+      if (createdAt != null) 'createdAt': Timestamp.fromDate(createdAt!),
+      'updatedAt': updatedAt != null
+          ? Timestamp.fromDate(updatedAt!)
+          : FieldValue.serverTimestamp(),
+      if (completedAt != null) 'completedAt': Timestamp.fromDate(completedAt!),
       'exercises': exercises.map((e) => e.toMap()).toList(),
       'machineHistoryCountApplied': machineHistoryCountApplied,
+      if (status.isNotEmpty) 'status': status,
+      'executionPhase': executionPhase,
+      if (activeExerciseId != null) 'activeExerciseId': activeExerciseId,
+      if (activeOriginalIndex != null)
+        'activeOriginalIndex': activeOriginalIndex,
+      'schemaVersion': schemaVersion,
     };
   }
 
@@ -312,7 +399,12 @@ class WorkoutSession {
     final timestamp = map['performedAt'] as Timestamp?;
     final startAtTimestamp = map['startAt'] as Timestamp?;
     final endAtTimestamp = map['endAt'] as Timestamp?;
+    final createdAtTimestamp = map['createdAt'] as Timestamp?;
+    final updatedAtTimestamp = map['updatedAt'] as Timestamp?;
+    final completedAtTimestamp = map['completedAt'] as Timestamp?;
     final rawExercises = map['exercises'] as List<dynamic>? ?? [];
+    final completedAt =
+        completedAtTimestamp?.toDate() ?? endAtTimestamp?.toDate();
     return WorkoutSession(
       id: id,
       workoutId: map['workoutId']?.toString() ?? '',
@@ -321,13 +413,31 @@ class WorkoutSession {
       performedAt: timestamp?.toDate(),
       startAt: startAtTimestamp?.toDate(),
       endAt: endAtTimestamp?.toDate(),
+      createdAt: createdAtTimestamp?.toDate(),
+      updatedAt: updatedAtTimestamp?.toDate(),
+      completedAt: completedAt,
       exercises: rawExercises
           .whereType<Map>()
           .map((e) => ExerciseExecution.fromMap(Map<String, dynamic>.from(e)))
           .toList(),
       machineHistoryCountApplied: _readBool(map['machineHistoryCountApplied']),
+      status: WorkoutSessionStatus.normalize(
+        map['status']?.toString(),
+        completedAt: completedAt,
+      ),
+      executionPhase: map['executionPhase']?.toString() ?? 'warmup',
+      activeExerciseId: _readOptionalString(map['activeExerciseId']),
+      activeOriginalIndex: _readOptionalPositiveOrZeroInt(
+        map['activeOriginalIndex'],
+      ),
+      schemaVersion: _readIntWithFallback(
+        map['schemaVersion'],
+        workoutSessionSchemaVersion,
+      ),
     );
   }
+
+  bool get isInProgress => status == WorkoutSessionStatus.inProgress;
 }
 
 int _readInt(Object? value) {
@@ -344,6 +454,18 @@ double _readDouble(Object? value) {
 int? _readOptionalPositiveInt(Object? value) {
   final parsed = _readInt(value);
   return parsed > 0 ? parsed : null;
+}
+
+int? _readOptionalPositiveOrZeroInt(Object? value) {
+  final parsed = _readInt(value);
+  return parsed >= 0 ? parsed : null;
+}
+
+int _readIntWithFallback(Object? value, int fallback) {
+  if (value == null) return fallback;
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString()) ?? fallback;
 }
 
 double? _readOptionalPositiveDouble(Object? value) {
@@ -375,6 +497,24 @@ double calculateSessionVolume(WorkoutSession session) {
     0,
     (total, exercise) => total + exercise.volume,
   );
+}
+
+bool isExerciseGoalReached(ExerciseExecution execution) {
+  final targetSets = execution.configuredSets;
+  final targetRepetitions = execution.configuredRepetitions;
+  final targetWeight = execution.configuredWeightKg;
+  if (targetSets == null ||
+      targetSets <= 0 ||
+      targetRepetitions == null ||
+      targetRepetitions <= 0 ||
+      targetWeight == null ||
+      targetWeight <= 0) {
+    return false;
+  }
+  final qualifyingSets = execution.sets.where((set) {
+    return set.reps >= targetRepetitions && set.weightKg >= targetWeight;
+  }).length;
+  return qualifyingSets >= targetSets;
 }
 
 const Object _notProvided = Object();

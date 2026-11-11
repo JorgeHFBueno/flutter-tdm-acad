@@ -1,13 +1,20 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+
 import '/components/my_button.dart';
 import '/components/my_textfield.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   final Function()? onTap;
-  const LoginScreen({super.key, required this.onTap});
+  final AuthService? authService;
+
+  const LoginScreen({
+    super.key,
+    required this.onTap,
+    this.authService,
+  });
 
   @override
   State<LoginScreen> createState() {
@@ -16,33 +23,31 @@ class LoginScreen extends StatefulWidget {
 }
 
 class LoginScreenState extends State<LoginScreen> {
-  final AuthService _authService = AuthService();
+  AuthService? _authService;
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _isLoading = false;
 
+  AuthService get _auth =>
+      widget.authService ?? (_authService ??= AuthService());
+
   Future<void> _handleSignIn() async {
-    if (_isLoading) {
-      return;
-    }
-    setState(() {
-      _isLoading = true;
-    });
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
 
     try {
-      await _authService.signInWithEmail(
+      await _auth.signInWithEmail(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      // fecha o loading; NÃO navega — AuthScreen já troca para MenuOptions
     } on FirebaseAuthException catch (e) {
       if (e.code == 'invalid-credential') {
-        _genericErrorMessage('Credenciais inválidas, tente novamente!');
+        _genericErrorMessage('Credenciais invalidas, tente novamente!');
       } else if (e.code == 'invalid-email') {
-        _genericErrorMessage('Informe um email válido!');
+        _genericErrorMessage('Informe um email valido!');
       } else if (e.code == 'user-not-found') {
-        _genericErrorMessage('Email não encontrado, efetue o registro!');
+        _genericErrorMessage('Email nao encontrado, efetue o registro!');
       } else if (e.code == 'wrong-password') {
         _genericErrorMessage('Senha incorreta, tente novamente!');
       } else {
@@ -51,25 +56,15 @@ class LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       _genericErrorMessage(e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
-    // loading
-    if (_isLoading) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
     try {
-      await _authService.signInWithGoogle();
+      await _auth.signInWithGoogle();
     } on AuthServiceException catch (e) {
       if (e.code != 'user-cancelled') {
         _genericErrorMessage(_mapAuthServiceError(e));
@@ -79,22 +74,18 @@ class LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       _genericErrorMessage(e.toString());
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   String _mapAuthServiceError(AuthServiceException error) {
     switch (error.code) {
       case 'user-cancelled':
-        return 'Login cancelado pelo usuário.';
+        return 'Login cancelado pelo usuario.';
       case 'invalid-credential':
-        return 'Credenciais inválidas.';
+        return 'Credenciais invalidas.';
       case 'configuration-not-found':
-        return 'Configuração do Google Sign-In ausente.';
+        return 'Configuracao do Google Sign-In ausente.';
       default:
         return error.message;
     }
@@ -103,161 +94,195 @@ class LoginScreenState extends State<LoginScreen> {
   String _mapFirebaseAuthError(FirebaseAuthException error) {
     switch (error.code) {
       case 'network-request-failed':
-        return 'Falha de rede. Verifique sua conexão.';
+        return 'Falha de rede. Verifique sua conexao.';
       case 'invalid-credential':
-        return 'Credenciais inválidas.';
+        return 'Credenciais invalidas.';
       case 'operation-not-allowed':
-        return 'Configuração do Google Sign-In ausente.';
+        return 'Configuracao do Google Sign-In ausente.';
       default:
         return error.message ?? 'Falha no login com Google.';
     }
   }
 
   void _genericErrorMessage(String message) {
-    if (!mounted) {
-      return;
-    }
+    if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 243, 243, 243),
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          Form(
-            key: _formKey,
-            child: SingleChildScrollView(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 50),
-                    SizedBox(
-                      height: 100,
-                      child: ClipOval(
-                        child: Image.asset(
-                          'assets/logos/patch_vanguard.png',
-                          fit: BoxFit.contain,
+          SafeArea(
+            child: Form(
+              key: _formKey,
+              child: AutofillGroup(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      padding: EdgeInsets.only(
+                        bottom: MediaQuery.viewInsetsOf(context).bottom + 24,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const SizedBox(height: 32),
+                              Container(
+                                width: 116,
+                                height: 116,
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.surface,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: theme.colorScheme.primary,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.18),
+                                      blurRadius: 18,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                                child: ClipOval(
+                                  child: Image.asset(
+                                    'assets/logos/patch_vanguard.png',
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+                              Text(
+                                'VANGUARD',
+                                style: theme.textTheme.headlineSmall?.copyWith(
+                                  color: theme.colorScheme.primary,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0,
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 25),
+                                child: Text(
+                                  'Ola, efetue o login para continuar.',
+                                  textAlign: TextAlign.center,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              MyTextField(
+                                controller: _emailController,
+                                hintText: 'Email',
+                                icon: const Icon(Icons.email_outlined),
+                                obscureText: false,
+                                capitalization: false,
+                                keyboardType: TextInputType.emailAddress,
+                                autofillHints: const [AutofillHints.email],
+                              ),
+                              const SizedBox(height: 15),
+                              MyTextField(
+                                controller: _passwordController,
+                                hintText: 'Senha',
+                                icon: const Icon(Icons.lock_outline),
+                                obscureText: true,
+                                capitalization: false,
+                                autofillHints: const [AutofillHints.password],
+                              ),
+                              const SizedBox(height: 15),
+                              MyButton(
+                                onPressed: _isLoading ? null : _handleSignIn,
+                                formKey: _formKey,
+                                text: 'Entrar',
+                              ),
+                              const SizedBox(height: 20),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 25),
+                                child: Row(
+                                  children: [
+                                    const Expanded(
+                                        child: Divider(thickness: 1)),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                      ),
+                                      child: Text(
+                                        'OU',
+                                        style: theme.textTheme.labelSmall
+                                            ?.copyWith(
+                                          color: theme
+                                              .colorScheme.onSurfaceVariant,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                    const Expanded(
+                                        child: Divider(thickness: 1)),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 25),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed:
+                                        _isLoading ? null : _handleGoogleSignIn,
+                                    icon: SvgPicture.asset(
+                                      'assets/icons/google.svg',
+                                      height: 22,
+                                    ),
+                                    label: const Text('Entrar com Google'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(52),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 30),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                crossAxisAlignment: WrapCrossAlignment.center,
+                                children: [
+                                  Text(
+                                    'Novo por aqui? ',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: widget.onTap,
+                                    child: const Text('Registre-se'),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 32),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Olá, efetue o login para continuar. ',
-                      style: TextStyle(
-                        color: Colors.grey[700],
-                        fontSize: 16,
-                      ),
-                    ),
-                    const SizedBox(height: 25),
-
-                    MyTextField(
-                      controller: _emailController,
-                      hintText: 'Email',
-                      icon: const Icon(Icons.email_outlined),
-                      obscureText: false,
-                      capitalization: false,
-                    ),
-                    const SizedBox(height: 15),
-
-                    MyTextField(
-                      controller: _passwordController,
-                      hintText: 'Senha',
-                      icon: const Icon(Icons.lock_outline),
-                      obscureText: true,
-                      capitalization: false,
-                    ),
-                    const SizedBox(height: 15),
-
-                    MyButton(
-                      onPressed: _isLoading ? null : _handleSignIn,
-                      formKey: _formKey,
-                      text: 'Logar',
-                    ),
-                    const SizedBox(height: 20),
-
-                    // continue with
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Divider(
-                              thickness: 0.5,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8, right: 8),
-                            child: Text(
-                              'OU',
-                              style: TextStyle(color: Colors.grey.shade600),
-                            ),
-                          ),
-                          Expanded(
-                            child: Divider(
-                              thickness: 0.5,
-                              color: Colors.grey.shade400,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Google button
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _isLoading ? null : _handleGoogleSignIn,
-                          icon: SvgPicture.asset(
-                            'assets/icons/google.svg',
-                            height: 22,
-                          ),
-                          label: const Text('Entrar com Google'),
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black87,
-                            side: BorderSide(color: Colors.grey.shade300),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 30),
-
-                    // not a member? register now
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Novo por aqui? ',
-                          style:
-                              TextStyle(color: Colors.grey[600], fontSize: 12),
-                        ),
-                        GestureDetector(
-                          onTap: widget.onTap,
-                          child: const Text(
-                            'Registre-se',
-                            style: TextStyle(
-                              color: Color(0xffE01C2F),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    )
-                  ],
+                    );
+                  },
                 ),
               ),
             ),
@@ -266,8 +291,10 @@ class LoginScreenState extends State<LoginScreen> {
             Positioned.fill(
               child: ColoredBox(
                 color: Colors.black38,
-                child: const Center(
-                  child: CircularProgressIndicator(color: Color(0xffE01C2F)),
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: theme.colorScheme.primary,
+                  ),
                 ),
               ),
             ),

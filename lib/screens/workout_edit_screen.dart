@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../models/machine_configuration.dart';
 import '../models/machine_history.dart';
+import '../models/machine_catalog_view.dart';
 import '../models/workout.dart';
 import '../services/machine_history_service.dart';
+import '../services/machine_catalog_service.dart';
 import '../services/workout_service.dart';
 import 'machine_history_screen.dart';
 
@@ -21,6 +23,7 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
   late final TextEditingController _nameController;
   final WorkoutService _workoutService = const WorkoutService();
   final MachineService _machineService = const MachineService();
+  final MachineCatalogService _catalogService = MachineCatalogService();
   late List<String> _selectedMachineIds;
   List<MachineProfile> _machines = const [];
   bool _isLoading = true;
@@ -47,7 +50,17 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
       return;
     }
     try {
-      final machines = await _machineService.listForUser(user.uid);
+      await _catalogService.importLocalCatalogOnce(user.uid);
+      final results = await Future.wait([
+        _machineService.listForUser(user.uid),
+        _catalogService.listCatalog(),
+      ]);
+      final machines = resolveProfilesFromCatalog(
+        results[0] as List<MachineProfile>,
+        indexMachineCatalog(results[1] as dynamic),
+        activeOnly: true,
+        preserveIds: widget.workout.machineIds.toSet(),
+      );
       if (!mounted) return;
       setState(() {
         _machines = machines;

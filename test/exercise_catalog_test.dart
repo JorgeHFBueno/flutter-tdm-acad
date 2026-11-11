@@ -32,6 +32,8 @@ void main() {
     test('finds category by exercise name', () {
       expect(resolveExerciseCategory('Remada baixa'), 'Costas');
       expect(resolveExerciseCategory('Supino Simples'), 'Peito');
+      expect(resolveExerciseCategory('Triceps Barra'), armExerciseCategory);
+      expect(resolveExerciseCategory('"ABS Perna"'), absExerciseCategory);
     });
 
     test('uses fallback category for unknown exercise', () {
@@ -87,7 +89,8 @@ void main() {
       );
     });
 
-    test('keeps exercises grouped under their original categories', () {
+    test('groups exercises under canonical categories without warmup machine',
+        () {
       final Map<String, List<ExerciseCatalogItem>> grouped =
           exercisesByCategory;
 
@@ -106,7 +109,31 @@ void main() {
       expect(
         grouped[fallbackExerciseCategory]
             ?.map((ExerciseCatalogItem item) => item.name),
-        contains('Aquecimento'),
+        isNot(contains('Aquecimento')),
+      );
+      expect(
+        grouped[armExerciseCategory]
+            ?.map((ExerciseCatalogItem item) => item.id),
+        containsAll([
+          'triceps_barra',
+          'triceps_corda',
+          'barra_w',
+          'biceps_halters',
+          'biceps_cadeira',
+        ]),
+      );
+      expect(
+        grouped[absExerciseCategory]
+            ?.map((ExerciseCatalogItem item) => item.id),
+        containsAll([
+          'abdominal_inclinado',
+          'abs_invertido',
+          'abs_perna',
+        ]),
+      );
+      expect(
+        exerciseCatalog.map((ExerciseCatalogItem item) => item.id),
+        isNot(contains(syntheticWarmupExerciseId)),
       );
     });
 

@@ -7,11 +7,14 @@ import '../data/exercise_catalog.dart';
 import '../models/machine_configuration.dart';
 import '../models/machine_event.dart';
 import '../models/machine_history.dart';
+import '../models/machine_catalog_item.dart';
 import '../models/workout_session.dart';
 import '../services/machine_history_service.dart';
 
-class MachinesScreen extends StatefulWidget {
-  const MachinesScreen({
+export 'machine_catalog_screen.dart' show MachinesScreen;
+
+class LegacyMachinesScreen extends StatefulWidget {
+  const LegacyMachinesScreen({
     super.key,
     this.embedInScaffold = true,
     MachineService? service,
@@ -21,10 +24,10 @@ class MachinesScreen extends StatefulWidget {
   final MachineService service;
 
   @override
-  State<MachinesScreen> createState() => _MachinesScreenState();
+  State<LegacyMachinesScreen> createState() => _LegacyMachinesScreenState();
 }
 
-class _MachinesScreenState extends State<MachinesScreen> {
+class _LegacyMachinesScreenState extends State<LegacyMachinesScreen> {
   MachineService get _service => widget.service;
 
   @override
@@ -161,6 +164,11 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
   final _weightController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   final _searchController = TextEditingController();
+  final _searchFocus = FocusNode();
+  final _setsFocus = FocusNode();
+  final _repetitionsFocus = FocusNode();
+  final _weightFocus = FocusNode();
+  final _observationFocus = FocusNode();
   ExerciseCatalogItem? _selected;
   MachineIncrease? _previousIncrease;
   MachineIncrease? _lastIncrease;
@@ -172,6 +180,11 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
     _repetitionsController.dispose();
     _weightController.dispose();
     _searchController.dispose();
+    _searchFocus.dispose();
+    _setsFocus.dispose();
+    _repetitionsFocus.dispose();
+    _weightFocus.dispose();
+    _observationFocus.dispose();
     super.dispose();
   }
 
@@ -191,16 +204,23 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
         child: SizedBox(
           width: double.maxFinite,
           child: SingleChildScrollView(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.viewInsetsOf(context).bottom +
+                  MediaQuery.viewPaddingOf(context).bottom,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: _searchController,
+                  focusNode: _searchFocus,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Buscar exercício',
                     border: OutlineInputBorder(),
                   ),
                   onChanged: (_) => setState(() {}),
+                  onSubmitted: (_) => _setsFocus.requestFocus(),
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
@@ -227,7 +247,9 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _setsController,
+                  focusNode: _setsFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Series atuais',
                     border: OutlineInputBorder(),
@@ -235,11 +257,14 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
                   validator: (value) => parsePositiveInt(value ?? '') == null
                       ? 'Informe um inteiro positivo'
                       : null,
+                  onFieldSubmitted: (_) => _repetitionsFocus.requestFocus(),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _repetitionsController,
+                  focusNode: _repetitionsFocus,
                   keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Repeticoes atuais',
                     border: OutlineInputBorder(),
@@ -247,13 +272,16 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
                   validator: (value) => parsePositiveInt(value ?? '') == null
                       ? 'Informe um inteiro positivo'
                       : null,
+                  onFieldSubmitted: (_) => _weightFocus.requestFocus(),
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
                   controller: _weightController,
+                  focusNode: _weightFocus,
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
+                  textInputAction: TextInputAction.next,
                   decoration: const InputDecoration(
                     labelText: 'Peso atual (kg)',
                     border: OutlineInputBorder(),
@@ -262,16 +290,20 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
                       parsePositiveDecimal(value ?? '') == null
                           ? 'Informe um numero positivo'
                           : null,
+                  onFieldSubmitted: (_) => _observationFocus.requestFocus(),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _observationController,
+                  focusNode: _observationFocus,
+                  textInputAction: TextInputAction.done,
                   decoration: const InputDecoration(
                     labelText: 'OBS',
                     border: OutlineInputBorder(),
                   ),
                   minLines: 2,
                   maxLines: 4,
+                  onSubmitted: (_) => FocusScope.of(context).unfocus(),
                 ),
                 const SizedBox(height: 8),
                 _increaseTile(
@@ -311,6 +343,7 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
   }
 
   void _submit() {
+    FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
     final item = _selected;
     if (item == null || widget.existingIds.contains(item.id)) {
@@ -405,11 +438,13 @@ class MachineDetailScreen extends StatefulWidget {
     required this.ownerUid,
     required this.exerciseId,
     MachineService? service,
+    this.catalogItem,
   }) : service = service ?? const MachineService();
 
   final String ownerUid;
   final String exerciseId;
   final MachineService service;
+  final MachineCatalogItem? catalogItem;
 
   @override
   State<MachineDetailScreen> createState() => _MachineDetailScreenState();
@@ -516,11 +551,17 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
             padding: const EdgeInsets.all(16),
             children: [
               Text(
-                machine.exerciseName,
+                widget.catalogItem?.popularName ?? machine.exerciseName,
                 style:
                     const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
               ),
-              Text(machine.category),
+              if (widget.catalogItem != null) ...[
+                Text(widget.catalogItem!.scientificName),
+                Text(
+                    '${MachineCatalogCategory.label(widget.catalogItem!.category)} · '
+                    '${MachineCatalogType.label(widget.catalogItem!.type)}'),
+              ] else
+                Text(machine.category),
               const SizedBox(height: 12),
               Text('Configuracao atual: ${config.compactLabel}'),
               if (!config.isComplete)
@@ -995,6 +1036,10 @@ class _MachineConfigurationDialogState
   late final TextEditingController _repetitionsController;
   late final TextEditingController _weightController;
   late final TextEditingController _observationController;
+  final _setsFocus = FocusNode();
+  final _repetitionsFocus = FocusNode();
+  final _weightFocus = FocusNode();
+  final _observationFocus = FocusNode();
 
   @override
   void initState() {
@@ -1022,6 +1067,10 @@ class _MachineConfigurationDialogState
     _repetitionsController.dispose();
     _weightController.dispose();
     _observationController.dispose();
+    _setsFocus.dispose();
+    _repetitionsFocus.dispose();
+    _weightFocus.dispose();
+    _observationFocus.dispose();
     super.dispose();
   }
 
@@ -1032,49 +1081,65 @@ class _MachineConfigurationDialogState
       content: Form(
         key: _formKey,
         child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.viewInsetsOf(context).bottom +
+                MediaQuery.viewPaddingOf(context).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextFormField(
                 controller: _setsController,
+                focusNode: _setsFocus,
                 keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Series atuais',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => _validateOptionalInt(value ?? ''),
+                onFieldSubmitted: (_) => _repetitionsFocus.requestFocus(),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _repetitionsController,
+                focusNode: _repetitionsFocus,
                 keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Repeticoes atuais',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => _validateOptionalInt(value ?? ''),
+                onFieldSubmitted: (_) => _weightFocus.requestFocus(),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _weightController,
+                focusNode: _weightFocus,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
+                textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   labelText: 'Peso atual (kg)',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => _validateOptionalDecimal(value ?? ''),
+                onFieldSubmitted: (_) => _observationFocus.requestFocus(),
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: _observationController,
+                focusNode: _observationFocus,
+                textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
                   labelText: 'OBS',
                   border: OutlineInputBorder(),
                 ),
                 minLines: 2,
                 maxLines: 4,
+                onFieldSubmitted: (_) => FocusScope.of(context).unfocus(),
               ),
             ],
           ),
@@ -1108,6 +1173,7 @@ class _MachineConfigurationDialogState
   }
 
   void _submit() {
+    FocusScope.of(context).unfocus();
     if (!(_formKey.currentState?.validate() ?? false)) return;
     Navigator.of(context).pop(
       MachineConfigurationResult(

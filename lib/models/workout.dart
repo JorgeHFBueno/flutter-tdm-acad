@@ -1,5 +1,7 @@
 import "package:cloud_firestore/cloud_firestore.dart";
 
+import '../data/exercise_catalog.dart';
+
 const int workoutSchemaVersion = 2;
 
 List<String> normalizeMachineIds(Iterable<String> ids) {
@@ -7,7 +9,9 @@ List<String> normalizeMachineIds(Iterable<String> ids) {
   final seen = <String>{};
   for (final rawId in ids) {
     final id = rawId.trim();
-    if (id.isEmpty || seen.contains(id)) continue;
+    if (id.isEmpty || isSyntheticWarmupExerciseId(id) || seen.contains(id)) {
+      continue;
+    }
     seen.add(id);
     normalized.add(id);
   }

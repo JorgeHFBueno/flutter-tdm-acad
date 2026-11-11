@@ -11,6 +11,9 @@ class ExerciseCatalogItem {
 }
 
 const String fallbackExerciseCategory = 'Outros';
+const String armExerciseCategory = 'Bíceps e Tríceps';
+const String absExerciseCategory = 'Abdominais (Abs)';
+const String syntheticWarmupExerciseId = 'aquecimento';
 
 const List<ExerciseCatalogItem> exerciseCatalog = [
   ExerciseCatalogItem(
@@ -36,7 +39,7 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
   ExerciseCatalogItem(
       id: 'abdominal_inclinado',
       name: 'Abdominal inclinado',
-      category: 'Peito'),
+      category: absExerciseCategory),
   ExerciseCatalogItem(
       id: 'elevacao_lateral_halteres',
       name: 'ElevaÃ§Ã£o lateral com halteres',
@@ -56,20 +59,32 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
       name: 'Supino reto (mÃ¡quina)',
       category: 'Peito'),
   ExerciseCatalogItem(
-      id: 'triceps_barra', name: 'Triceps Barra', category: 'Peito'),
+      id: 'triceps_barra',
+      name: 'Triceps Barra',
+      category: armExerciseCategory),
   ExerciseCatalogItem(
-      id: 'triceps_corda', name: 'Triceps Corda', category: 'Peito'),
+      id: 'triceps_corda',
+      name: 'Triceps Corda',
+      category: armExerciseCategory),
   ExerciseCatalogItem(id: 'voador', name: 'Voador', category: 'Peito'),
   ExerciseCatalogItem(
-      id: 'abs_invertido', name: '"ABS Invertido"', category: 'Costas'),
-  ExerciseCatalogItem(id: 'abs_perna', name: '"ABS Perna"', category: 'Costas'),
+      id: 'abs_invertido',
+      name: '"ABS Invertido"',
+      category: absExerciseCategory),
+  ExerciseCatalogItem(
+      id: 'abs_perna', name: '"ABS Perna"', category: absExerciseCategory),
   ExerciseCatalogItem(
       id: 'antebraco_barra', name: 'AntebraÃ§o barra', category: 'Costas'),
-  ExerciseCatalogItem(id: 'barra_w', name: 'Barra W', category: 'Costas'),
   ExerciseCatalogItem(
-      id: 'biceps_halters', name: 'Biceps Halters', category: 'Costas'),
+      id: 'barra_w', name: 'Barra W', category: armExerciseCategory),
   ExerciseCatalogItem(
-      id: 'biceps_cadeira', name: 'Biceps cadeira', category: 'Costas'),
+      id: 'biceps_halters',
+      name: 'Biceps Halters',
+      category: armExerciseCategory),
+  ExerciseCatalogItem(
+      id: 'biceps_cadeira',
+      name: 'Biceps cadeira',
+      category: armExerciseCategory),
   ExerciseCatalogItem(
       id: 'dorsal_maquina', name: 'Dorsal na mÃ¡quina', category: 'Costas'),
   ExerciseCatalogItem(
@@ -83,15 +98,29 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
   ExerciseCatalogItem(
       id: 'remada_baixa', name: 'Remada baixa', category: 'Costas'),
   ExerciseCatalogItem(
-      id: 'aquecimento',
-      name: 'Aquecimento',
-      category: fallbackExerciseCategory),
-  ExerciseCatalogItem(
     id: 'desenvolvimento_ombro',
     name: 'Desenvolvimento ombro',
     category: fallbackExerciseCategory,
   ),
 ];
+
+bool isSyntheticWarmupExerciseId(String? id) {
+  return id?.trim().toLowerCase() == syntheticWarmupExerciseId;
+}
+
+bool isSyntheticWarmupExercise({
+  String? exerciseId,
+  String? exerciseName,
+  String? category,
+}) {
+  final name = exerciseName?.trim().toLowerCase();
+  final normalizedCategory = category?.trim();
+  return isSyntheticWarmupExerciseId(exerciseId) &&
+      name == 'aquecimento' &&
+      (normalizedCategory == null ||
+          normalizedCategory.isEmpty ||
+          normalizedCategory == fallbackExerciseCategory);
+}
 
 List<String> get exerciseCatalogCategories {
   final categories = <String>[];
@@ -153,12 +182,15 @@ ExerciseCatalogItem? findExerciseCatalogItemByNameAndCategory(
 }
 
 String resolveExerciseCategory(String name, {String? savedCategory}) {
+  final catalogCategory = findExerciseCatalogItem(name)?.category;
+  if (catalogCategory != null) return catalogCategory;
+
   final normalizedCategory = savedCategory?.trim();
   if (normalizedCategory != null && normalizedCategory.isNotEmpty) {
     return normalizedCategory;
   }
 
-  return findExerciseCatalogItem(name)?.category ?? fallbackExerciseCategory;
+  return fallbackExerciseCategory;
 }
 
 String normalizeExerciseIdPart(String value) {

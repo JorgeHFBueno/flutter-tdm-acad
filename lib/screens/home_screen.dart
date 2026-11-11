@@ -2,8 +2,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/workout.dart';
+import '../models/workout_session.dart';
+import '../services/machine_history_service.dart';
 import '../services/workout_service.dart';
 import 'workout_creation_screen.dart';
+import 'workout_execution_screen.dart';
 import 'workout_list_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -11,6 +14,7 @@ class HomeScreen extends StatelessWidget {
 
   final bool embedInScaffold;
   final WorkoutService _workoutService = WorkoutService();
+  final MachineService _machineService = const MachineService();
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +39,19 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          StreamBuilder<WorkoutSession?>(
+            stream: _machineService.watchActiveSession(user.uid),
+            builder: (context, snapshot) {
+              final session = snapshot.data;
+              if (session == null || !session.isInProgress) {
+                return const SizedBox.shrink();
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _buildContinueWorkout(context, session),
+              );
+            },
+          ),
           Expanded(
             child: StreamBuilder<List<Workout>>(
               stream: _workoutService.getWorkoutsForUser(user.uid),
@@ -150,6 +167,71 @@ class HomeScreen extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildContinueWorkout(BuildContext context, WorkoutSession session) {
+    final completed = session.exercises
+        .where((exercise) => !exercise.isWarmup && exercise.completed)
+        .length;
+    final total =
+        session.exercises.where((exercise) => !exercise.isWarmup).length;
+    final started = session.startAt;
+    final dateLabel = started == null
+        ? null
+        : '${started.day.toString().padLeft(2, '0')}/'
+            '${started.month.toString().padLeft(2, '0')} '
+            '${started.hour.toString().padLeft(2, '0')}:'
+            '${started.minute.toString().padLeft(2, '0')}';
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.play_circle_outline),
+        title: const Text('Continuar treino'),
+        subtitle: Text(
+          [
+            session.workoutName,
+            if (dateLabel != null) dateLabel,
+            '$completed de $total exercicios',
+          ].join(' - '),
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          final machineIds = _machineIdsFromSession(session);
+          if (machineIds.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Sessao em andamento sem exercicios validos.'),
+              ),
+            );
+            return;
+          }
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => WorkoutExecutionScreen(
+                workout: _workoutFromSession(session, machineIds),
+                initialSession: session,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  List<String> _machineIdsFromSession(WorkoutSession session) {
+    return [
+      for (final exercise in session.exercises)
+        if (!exercise.isWarmup && (exercise.exerciseId ?? '').trim().isNotEmpty)
+          exercise.exerciseId!.trim(),
+    ];
+  }
+
+  Workout _workoutFromSession(WorkoutSession session, List<String> machineIds) {
+    return Workout(
+      id: session.workoutId,
+      name: session.workoutName,
+      ownerUid: session.ownerUid,
+      machineIds: machineIds,
     );
   }
 }

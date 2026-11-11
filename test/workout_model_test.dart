@@ -44,6 +44,21 @@ void main() {
       expect(workout.updatedAt, isNull);
     });
 
+    test('filters legacy synthetic warmup id from active workout refs', () {
+      final workout = Workout.fromMap(
+        {
+          'name': 'Treino antigo',
+          'ownerUid': 'user-1',
+          'machineIds': ['aquecimento', 'supino', 'aquecimento', 'remada'],
+          'schemaVersion': 2,
+        },
+        id: 'workout-warmup',
+      );
+
+      expect(workout.machineIds, ['supino', 'remada']);
+      expect(workout.toMap()['machineIds'], ['supino', 'remada']);
+    });
+
     test('validation rejects empty name, owner, or machine list', () {
       expect(
         () => validateWorkoutFields(

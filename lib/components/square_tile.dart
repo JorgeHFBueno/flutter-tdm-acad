@@ -15,14 +15,16 @@ class SquareTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ElevatedButton(
       onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        padding: EdgeInsets.all(10),
-        backgroundColor: Colors.grey[300],
-        side: BorderSide(color: Colors.white),
+        padding: const EdgeInsets.all(10),
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.primary,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(8),
         ),
       ),
       child: SvgPicture.asset(

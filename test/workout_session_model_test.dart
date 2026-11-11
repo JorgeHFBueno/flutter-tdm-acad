@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebased/models/workout_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -95,6 +96,32 @@ void main() {
 
       expect(execution.isWarmup, isFalse);
       expect(execution.targetExerciseName, isNull);
+      expect(execution.status, ExerciseExecutionStatus.pending);
+    });
+
+    test('serializes partial and skipped exercise statuses', () {
+      final partial = ExerciseExecution(
+        exerciseId: 'supino',
+        exerciseName: 'Supino',
+        sets: [ExerciseSet(setNumber: 1, reps: 6, weightKg: 30)],
+        completed: true,
+        status: ExerciseExecutionStatus.partial,
+      );
+      final skipped = ExerciseExecution(
+        exerciseId: 'remada',
+        exerciseName: 'Remada',
+        sets: const [],
+        completed: true,
+        status: ExerciseExecutionStatus.skipped,
+      );
+
+      expect(ExerciseExecution.fromMap(partial.toMap()).status,
+          ExerciseExecutionStatus.partial);
+      expect(ExerciseExecution.fromMap(skipped.toMap()).sets, isEmpty);
+      expect(
+          ExerciseExecution.fromMap(skipped.toMap()).perceivedEffort, isNull);
+      expect(ExerciseExecution.fromMap(skipped.toMap()).status,
+          ExerciseExecutionStatus.skipped);
     });
 
     test('keeps old effort value readable without changing original value', () {
@@ -162,6 +189,37 @@ void main() {
       expect(calculateSessionVolume(session), 550);
     });
 
+    test('normalizes active and completed session status compatibly', () {
+      final active = WorkoutSession.fromMap({
+        'workoutId': 'workout-1',
+        'workoutName': 'Treino A',
+        'ownerUid': 'user-1',
+        'status': WorkoutSessionStatus.inProgress,
+        'executionPhase': 'executingExercise',
+        'activeExerciseId': 'supino',
+        'activeOriginalIndex': 0,
+        'exercises': [
+          {'exerciseName': 'Aquecimento', 'isWarmup': true},
+          {'exerciseId': 'supino', 'exerciseName': 'Supino'},
+        ],
+      });
+
+      final completedAt = Timestamp.fromDate(DateTime(2026));
+      final legacyCompleted = WorkoutSession.fromMap({
+        'workoutId': 'workout-1',
+        'workoutName': 'Treino A',
+        'ownerUid': 'user-1',
+        'completedAt': completedAt,
+        'exercises': const [],
+      });
+
+      expect(active.isInProgress, isTrue);
+      expect(active.executionPhase, 'executingExercise');
+      expect(active.activeExerciseId, 'supino');
+      expect(active.activeOriginalIndex, 0);
+      expect(legacyCompleted.status, WorkoutSessionStatus.completed);
+    });
+
     test('serializes optional machine configuration snapshot', () {
       final execution = ExerciseExecution(
         exerciseId: 'supino_simples',
@@ -196,6 +254,79 @@ void main() {
       expect(execution.configuredWeightKg, isNull);
       expect(execution.observationSnapshot, isNull);
       expect(execution.volume, 400);
+    });
+
+    group('goal reached', () {
+      ExerciseExecution execution({
+        required List<ExerciseSet> sets,
+        int? configuredSets = 3,
+        int? configuredRepetitions = 12,
+        double? configuredWeightKg = 40,
+      }) {
+        return ExerciseExecution(
+          exerciseId: 'supino',
+          exerciseName: 'Supino',
+          sets: sets,
+          configuredSets: configuredSets,
+          configuredRepetitions: configuredRepetitions,
+          configuredWeightKg: configuredWeightKg,
+        );
+      }
+
+      test('detects below exact and above target', () {
+        expect(
+          execution(
+            sets: [
+              ExerciseSet(setNumber: 1, reps: 12, weightKg: 40),
+              ExerciseSet(setNumber: 2, reps: 12, weightKg: 40),
+            ],
+          ).isGoalReached,
+          isFalse,
+        );
+        expect(
+          execution(
+            sets: [
+              ExerciseSet(setNumber: 1, reps: 12, weightKg: 40),
+              ExerciseSet(setNumber: 2, reps: 12, weightKg: 40),
+              ExerciseSet(setNumber: 3, reps: 12, weightKg: 40),
+            ],
+          ).isGoalReached,
+          isTrue,
+        );
+        expect(
+          execution(
+            sets: [
+              ExerciseSet(setNumber: 1, reps: 15, weightKg: 45),
+              ExerciseSet(setNumber: 2, reps: 13, weightKg: 40),
+              ExerciseSet(setNumber: 3, reps: 12, weightKg: 42),
+              ExerciseSet(setNumber: 4, reps: 12, weightKg: 40),
+            ],
+          ).isGoalReached,
+          isTrue,
+        );
+      });
+
+      test('returns false for reduced invalid or partial data', () {
+        expect(
+          execution(
+            sets: [
+              ExerciseSet(setNumber: 1, reps: 12, weightKg: 40),
+              ExerciseSet(setNumber: 2, reps: 11, weightKg: 40),
+              ExerciseSet(setNumber: 3, reps: 12, weightKg: 35),
+            ],
+          ).isGoalReached,
+          isFalse,
+        );
+        expect(
+          execution(
+            configuredSets: null,
+            sets: [
+              ExerciseSet(setNumber: 1, reps: 12, weightKg: 40),
+            ],
+          ).isGoalReached,
+          isFalse,
+        );
+      });
     });
   });
 }

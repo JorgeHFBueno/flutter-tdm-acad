@@ -28,15 +28,16 @@ ResolvedExerciseConfiguration resolveExerciseConfiguration({
   double safeDefaultWeightKg = 10,
   int safeDefaultRepetitions = 10,
 }) {
-  final resolvedWeight = machine?.currentWeightKg ?? safeDefaultWeightKg;
+  final rawWeight = machine?.currentWeightKg;
+  final resolvedWeight =
+      rawWeight == null || rawWeight < 0 ? safeDefaultWeightKg : rawWeight;
   final resolvedRepetitions =
       machine?.currentRepetitions ?? safeDefaultRepetitions;
 
   return ResolvedExerciseConfiguration(
     configuredSets: machine?.currentSets,
     configuredRepetitions: resolvedRepetitions,
-    configuredWeightKg:
-        resolvedWeight > 0 ? resolvedWeight : safeDefaultWeightKg,
+    configuredWeightKg: resolvedWeight,
     observation: machine?.observationText ?? '',
     hasMachine: machine != null,
     isComplete: machine?.currentSets != null &&

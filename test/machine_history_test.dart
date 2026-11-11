@@ -50,6 +50,26 @@ void main() {
       expect(profile.currentWeightKg, isNull);
     });
 
+    test('uses canonical catalog category while preserving legacy profile data',
+        () {
+      final profile = MachineProfile.fromMap({
+        'exerciseId': 'triceps_barra',
+        'exerciseName': 'Triceps Barra',
+        'category': 'Peito',
+        'ownerUid': 'user-1',
+        'completionCount': 7,
+        'observation': 'Corda curta',
+        'currentSets': 3,
+        'currentRepetitions': 12,
+        'currentWeightKg': 25.5,
+      });
+
+      expect(profile.category, armExerciseCategory);
+      expect(profile.completionCount, 7);
+      expect(profile.observation, 'Corda curta');
+      expect(profile.currentWeightKg, 25.5);
+    });
+
     test('deserializes numeric int and double values', () {
       final intIncrease = MachineIncrease.fromMap({
         'type': MachineIncreaseType.weight,
@@ -181,6 +201,44 @@ void main() {
           ),
         ),
         '15 repeticoes',
+      );
+    });
+
+    test('formats latest valid increase for workout card', () {
+      final profile = MachineProfile(
+        exerciseId: 'supino',
+        exerciseName: 'Supino',
+        category: 'Peito',
+        ownerUid: 'user-1',
+        lastIncrease: MachineIncrease(
+          type: MachineIncreaseType.weight,
+          value: 45.5,
+          date: DateTime(2026, 7, 28),
+        ),
+        previousIncrease: MachineIncrease(
+          type: MachineIncreaseType.repetitions,
+          value: 12,
+          date: DateTime(2026, 7, 20),
+        ),
+      );
+
+      final latest = latestValidMachineIncrease(profile);
+
+      expect(latest?.value, 45.5);
+      expect(
+        formatLatestMachineIncrease(latest),
+        'Ul_Mod: peso | +45,5 | 28/07',
+      );
+      expect(
+        formatLatestMachineIncrease(
+          latestValidMachineIncrease(
+            profile.copyWith(
+              clearLastIncrease: true,
+              clearPreviousIncrease: true,
+            ),
+          ),
+        ),
+        'Ul_Mod: --',
       );
     });
 
@@ -352,11 +410,14 @@ void main() {
       );
       final warmup = normal.copyWith(isWarmup: true);
       final pending = normal.copyWith(completed: false);
+      final partial = normal.copyWith(status: ExerciseExecutionStatus.partial);
       final unknown = normal.copyWith(perceivedEffort: 'desconhecido');
 
       expect(shouldCreateMachineCompletionEvent(normal), isTrue);
       expect(shouldCreateMachineCompletionEvent(warmup), isFalse);
       expect(shouldCreateMachineCompletionEvent(pending), isFalse);
+      expect(shouldCreateMachineCompletionEvent(partial), isFalse);
+      expect(shouldCountMachineCompletion(partial), isFalse);
       expect(shouldCreateMachineCompletionEvent(unknown), isFalse);
     });
 
@@ -701,6 +762,96 @@ void main() {
 
       expect(first, second);
       expect(first, startsWith('legacy__'));
+    });
+  });
+
+  group('latest machine modification for workout execution', () {
+    MachineEvent event({
+      required String type,
+      required double previous,
+      required double current,
+      required DateTime date,
+    }) {
+      return MachineEvent(
+        id: '$type-$date',
+        exerciseId: 'supino',
+        ownerUid: 'user-1',
+        type: type,
+        previousValue: previous,
+        newValue: current,
+        occurredAt: date,
+      );
+    }
+
+    test('formats repetition, set and weight deltas', () {
+      expect(
+        formatLatestMachineModification(event(
+          type: MachineEventType.repetitionsIncreased,
+          previous: 10,
+          current: 20,
+          date: DateTime(2026, 7, 1),
+        )),
+        'Ul_Mod: rep | +10 | 01/07',
+      );
+      expect(
+        formatLatestMachineModification(event(
+          type: MachineEventType.setsIncreased,
+          previous: 3,
+          current: 4,
+          date: DateTime(2026, 7, 15),
+        )),
+        'Ul_Mod: ser | +1 | 15/07',
+      );
+      expect(
+        formatLatestMachineModification(event(
+          type: MachineEventType.weightIncreased,
+          previous: 40,
+          current: 45,
+          date: DateTime(2026, 7, 22),
+        )),
+        'Ul_Mod: peso | +5 | 22/07',
+      );
+    });
+
+    test('preserves negative sign and compact decimal value', () {
+      expect(
+        formatLatestMachineModification(event(
+          type: MachineEventType.weightIncreased,
+          previous: 40,
+          current: 38,
+          date: DateTime(2026, 8, 3),
+        )),
+        'Ul_Mod: peso | -2 | 03/08',
+      );
+      expect(
+        formatLatestMachineModification(event(
+          type: MachineEventType.weightIncreased,
+          previous: 40,
+          current: 42.5,
+          date: DateTime(2026, 8, 4),
+        )),
+        'Ul_Mod: peso | +2,5 | 04/08',
+      );
+    });
+
+    test('ignores observations and reports absence discreetly', () {
+      final observation = MachineEvent(
+        id: 'observation',
+        exerciseId: 'supino',
+        ownerUid: 'user-1',
+        type: MachineEventType.observationChanged,
+        occurredAt: DateTime(2026, 8, 4),
+      );
+      final increase = event(
+        type: MachineEventType.weightIncreased,
+        previous: 40,
+        current: 45,
+        date: DateTime(2026, 8, 3),
+      );
+
+      expect(latestMachineModification([observation, increase]), increase);
+      expect(latestMachineModification([observation]), isNull);
+      expect(formatLatestMachineModification(null), 'Ul_Mod: --');
     });
   });
 

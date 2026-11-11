@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/machine_event.dart';
 import '../models/machine_history.dart';
 import '../models/workout_session.dart';
+import '../data/exercise_catalog.dart';
 
 const String canonicalMachinesCollection = 'machines';
 
@@ -63,15 +64,32 @@ class MachineService {
         .map(
           (snapshot) => snapshot.docs
               .map((doc) => MachineProfile.fromMap(doc.data(), id: doc.id))
+              .where((machine) => !isSyntheticWarmupExercise(
+                    exerciseId: machine.exerciseId,
+                    exerciseName: machine.exerciseName,
+                    category: machine.category,
+                  ))
               .toList(),
         );
   }
 
   Future<List<MachineProfile>> listForUser(String ownerUid) async {
-    return _canonicalCollection(ownerUid).orderBy('exerciseName').get().then(
-        (snapshot) => snapshot.docs
-            .map((doc) => MachineProfile.fromMap(doc.data(), id: doc.id))
-            .toList());
+    final snapshot =
+        await _canonicalCollection(ownerUid).orderBy('exerciseName').get();
+    final machines = <MachineProfile>[];
+    for (final doc in snapshot.docs) {
+      final machine = MachineProfile.fromMap(doc.data(), id: doc.id);
+      if (isSyntheticWarmupExercise(
+        exerciseId: machine.exerciseId,
+        exerciseName: machine.exerciseName,
+        category: machine.category,
+      )) {
+        await doc.reference.delete();
+        continue;
+      }
+      machines.add(machine);
+    }
+    return machines;
   }
 
   Future<MachineProfile?> getByExerciseId(
@@ -98,6 +116,13 @@ class MachineService {
   }
 
   Future<void> createMachine(MachineProfile machine) async {
+    if (isSyntheticWarmupExercise(
+      exerciseId: machine.exerciseId,
+      exerciseName: machine.exerciseName,
+      category: machine.category,
+    )) {
+      return;
+    }
     final ref = _canonicalCollection(machine.ownerUid).doc(machine.exerciseId);
     final now = FieldValue.serverTimestamp();
     await ref.set({
@@ -121,13 +146,24 @@ class MachineService {
     int? currentRepetitions,
     double? currentWeightKg,
   }) async {
+    if (isSyntheticWarmupExercise(
+      exerciseId: exerciseId,
+      exerciseName: exerciseName,
+      category: category,
+    )) {
+      return;
+    }
+    final canonicalCategory =
+        findExerciseCatalogItemById(exerciseId)?.category ??
+            findExerciseCatalogItem(exerciseName)?.category ??
+            category;
     final ref = _canonicalCollection(ownerUid).doc(exerciseId);
     final existing = await ref.get();
     final now = FieldValue.serverTimestamp();
     await ref.set({
       'exerciseId': exerciseId,
       'exerciseName': exerciseName,
-      'category': category,
+      'category': canonicalCategory,
       'ownerUid': ownerUid,
       'schemaVersion': 1,
       if (!existing.exists) 'completionCount': initialCompletionCount,
@@ -192,6 +228,7 @@ class MachineService {
       }
 
       final now = FieldValue.serverTimestamp();
+
       transaction.set(
         ref,
         {
@@ -582,6 +619,59 @@ class MachineService {
     return _firestore.collection('workout_history').doc();
   }
 
+  Stream<WorkoutSession?> watchActiveSession(String ownerUid) {
+    return _firestore
+        .collection('workout_history')
+        .where('ownerUid', isEqualTo: ownerUid)
+        .where('status', isEqualTo: WorkoutSessionStatus.inProgress)
+        .limit(1)
+        .snapshots()
+        .map((snapshot) {
+      if (snapshot.docs.isEmpty) return null;
+      final doc = snapshot.docs.first;
+      return WorkoutSession.fromMap(doc.data(), id: doc.id);
+    });
+  }
+
+  Future<WorkoutSession?> getActiveSession(String ownerUid) async {
+    final snapshot = await _firestore
+        .collection('workout_history')
+        .where('ownerUid', isEqualTo: ownerUid)
+        .where('status', isEqualTo: WorkoutSessionStatus.inProgress)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) return null;
+    final doc = snapshot.docs.first;
+    return WorkoutSession.fromMap(doc.data(), id: doc.id);
+  }
+
+  Future<void> saveInProgressSession({
+    required DocumentReference<Map<String, dynamic>> sessionRef,
+    required WorkoutSession session,
+  }) async {
+    final data = session.toMap();
+    final existing = await sessionRef.get();
+    await sessionRef.set({
+      ...data,
+      'status': WorkoutSessionStatus.inProgress,
+      'schemaVersion': workoutSessionSchemaVersion,
+      'updatedAt': FieldValue.serverTimestamp(),
+      if (!existing.exists) 'createdAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> abandonSession({
+    required String sessionId,
+    required String ownerUid,
+  }) async {
+    await _firestore.collection('workout_history').doc(sessionId).set({
+      'ownerUid': ownerUid,
+      'status': WorkoutSessionStatus.abandoned,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'abandonedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
   Future<void> saveSessionAndApplyMachineCounts({
     required DocumentReference<Map<String, dynamic>> sessionRef,
     required Map<String, dynamic> sessionData,
@@ -646,17 +736,21 @@ class MachineService {
         machineSnapshots[exerciseId] = await transaction.get(ref);
       }
 
+      final now = FieldValue.serverTimestamp();
+
       transaction.set(
         sessionRef,
         {
           ...sessionData,
+          'status': WorkoutSessionStatus.completed,
+          'completedAt': sessionData['completedAt'] ?? now,
+          'updatedAt': now,
           'machineHistoryCountApplied': true,
           'machineCountApplied': true,
         },
         SetOptions(merge: true),
       );
 
-      final now = FieldValue.serverTimestamp();
       for (final completion in uniqueCompletionEvents.values) {
         final ref = _canonicalCollection(ownerUid).doc(completion.exerciseId);
         final snapshot = machineSnapshots[completion.exerciseId];

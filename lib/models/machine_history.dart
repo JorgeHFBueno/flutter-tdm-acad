@@ -1,6 +1,8 @@
 // ignore: depend_on_referenced_packages
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../data/exercise_catalog.dart';
+
 class MachineIncreaseType {
   static const weight = 'weight';
   static const sets = 'sets';
@@ -13,7 +15,7 @@ class MachineIncreaseType {
       case weight:
         return 'Peso';
       case sets:
-        return 'Series';
+        return 'Serie';
       case repetitions:
         return 'Repeticoes';
       default:
@@ -76,6 +78,8 @@ class MachineProfile {
   final String exerciseName;
   final String category;
   final String ownerUid;
+  final String? catalogScientificName;
+  final String? catalogType;
   final String? observation;
   final int completionCount;
   final MachineIncrease? lastIncrease;
@@ -96,6 +100,8 @@ class MachineProfile {
     required this.exerciseName,
     required this.category,
     required this.ownerUid,
+    this.catalogScientificName,
+    this.catalogType,
     this.observation,
     this.completionCount = 0,
     this.lastIncrease,
@@ -118,6 +124,8 @@ class MachineProfile {
     String? exerciseName,
     String? category,
     String? ownerUid,
+    Object? catalogScientificName = _notProvided,
+    Object? catalogType = _notProvided,
     Object? observation = _notProvided,
     int? completionCount,
     MachineIncrease? lastIncrease,
@@ -140,6 +148,12 @@ class MachineProfile {
       exerciseName: exerciseName ?? this.exerciseName,
       category: category ?? this.category,
       ownerUid: ownerUid ?? this.ownerUid,
+      catalogScientificName: catalogScientificName == _notProvided
+          ? this.catalogScientificName
+          : catalogScientificName as String?,
+      catalogType: catalogType == _notProvided
+          ? this.catalogType
+          : catalogType as String?,
       observation: observation == _notProvided
           ? this.observation
           : observation as String?,
@@ -204,10 +218,14 @@ class MachineProfile {
       };
 
   factory MachineProfile.fromMap(Map<String, dynamic> map, {String? id}) {
+    final exerciseId = map['exerciseId']?.toString() ?? id ?? '';
+    final exerciseName = map['exerciseName']?.toString() ?? '';
+    final catalogItem = findExerciseCatalogItemById(exerciseId) ??
+        findExerciseCatalogItem(exerciseName);
     return MachineProfile(
-      exerciseId: map['exerciseId']?.toString() ?? id ?? '',
-      exerciseName: map['exerciseName']?.toString() ?? '',
-      category: map['category']?.toString() ?? '',
+      exerciseId: exerciseId,
+      exerciseName: exerciseName,
+      category: catalogItem?.category ?? map['category']?.toString() ?? '',
       ownerUid: map['ownerUid']?.toString() ?? '',
       completionCount: readMachineInt(map['completionCount']),
       observation: map.containsKey('observation')
@@ -391,6 +409,37 @@ String formatIncreaseValue(MachineIncrease increase) {
     default:
       return _formatPtNumber(increase.value);
   }
+}
+
+MachineIncrease? latestValidMachineIncrease(MachineProfile machine) {
+  final increases = [
+    machine.lastIncrease,
+    machine.previousIncrease,
+  ].whereType<MachineIncrease>().where((increase) => increase.isValid).toList();
+  if (increases.isEmpty) return null;
+  increases.sort((a, b) {
+    final byDate = b.date.compareTo(a.date);
+    if (byDate != 0) return byDate;
+    final aSlot = identical(a, machine.lastIncrease) ? 0 : 1;
+    final bSlot = identical(b, machine.lastIncrease) ? 0 : 1;
+    return aSlot.compareTo(bSlot);
+  });
+  return increases.first;
+}
+
+String formatLatestMachineIncrease(MachineIncrease? increase) {
+  if (increase == null) return 'Ul_Mod: --';
+  final date =
+      '${_twoDigits(increase.date.day)}/${_twoDigits(increase.date.month)}';
+  final type = switch (increase.type) {
+    MachineIncreaseType.repetitions => 'rep',
+    MachineIncreaseType.sets => 'ser',
+    MachineIncreaseType.weight => 'peso',
+    _ => null,
+  };
+  if (type == null) return 'Ul_Mod: --';
+  final sign = increase.value >= 0 ? '+' : '';
+  return 'Ul_Mod: $type | $sign${_formatPtNumber(increase.value)} | $date';
 }
 
 String _formatPtNumber(double value) {

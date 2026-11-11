@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/machine_history.dart';
 import '../models/workout.dart';
 import '../models/workout_machine_resolution.dart';
+import '../models/workout_session.dart';
 import '../screens/workout_execution_screen.dart';
 import '../services/machine_history_service.dart';
 import '../services/workout_service.dart';
@@ -122,19 +123,9 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                         'Uma ou mais maquinas deste treino nao estao disponiveis. Edite o treino antes de iniciar.',
                       ),
                 onTap: missingIds.isEmpty
-                    ? () {
+                    ? () async {
                         Navigator.of(ctx).pop();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => WorkoutExecutionScreen(
-                              workout: workout,
-                              machines: resolveWorkoutMachines(
-                                workout,
-                                machinesById,
-                              ),
-                            ),
-                          ),
-                        );
+                        await _startWorkout(context, workout, machinesById);
                       }
                     : null,
               ),
@@ -163,6 +154,100 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
         );
       },
     );
+  }
+
+  Future<void> _startWorkout(
+    BuildContext context,
+    Workout workout,
+    Map<String, MachineProfile> machinesById,
+  ) async {
+    if (_uid == null) return;
+    final active = await _machineService.getActiveSession(_uid);
+    if (!context.mounted) return;
+    if (active != null && active.isInProgress) {
+      final action = await showDialog<String>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Treino em andamento'),
+          content: Text('Ja existe um treino ativo: ${active.workoutName}.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop('cancel'),
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop('continue'),
+              child: const Text('Continuar atual'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop('discard'),
+              child: const Text('Descartar atual'),
+            ),
+          ],
+        ),
+      );
+      if (!context.mounted || action == null || action == 'cancel') return;
+      if (action == 'continue') {
+        final ids = _machineIdsFromSession(active);
+        if (ids.isEmpty) return;
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => WorkoutExecutionScreen(
+              workout: Workout(
+                id: active.workoutId,
+                name: active.workoutName,
+                ownerUid: active.ownerUid,
+                machineIds: ids,
+              ),
+              initialSession: active,
+            ),
+          ),
+        );
+        return;
+      }
+      final confirmDiscard = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Descartar treino atual?'),
+          content: const Text('O treino ativo sera marcado como abandonado.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Descartar'),
+            ),
+          ],
+        ),
+      );
+      if (confirmDiscard != true || active.id == null) return;
+      await _machineService.abandonSession(
+        sessionId: active.id!,
+        ownerUid: _uid,
+      );
+      if (!context.mounted) return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WorkoutExecutionScreen(
+          workout: workout,
+          machines: resolveWorkoutMachines(
+            workout,
+            machinesById,
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<String> _machineIdsFromSession(WorkoutSession session) {
+    return [
+      for (final exercise in session.exercises)
+        if (!exercise.isWarmup && (exercise.exerciseId ?? '').trim().isNotEmpty)
+          exercise.exerciseId!.trim(),
+    ];
   }
 
   Future<void> _confirmDelete(BuildContext context, Workout workout) async {

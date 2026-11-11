@@ -230,6 +230,7 @@ String symbolForMachinePerception(String? perception) {
 
 bool shouldCreateMachineCompletionEvent(ExerciseExecution execution) {
   if (execution.isWarmup || !execution.completed) return false;
+  if (execution.status != ExerciseExecutionStatus.completed) return false;
   if ((execution.exerciseId ?? '').trim().isEmpty) return false;
   return PerceivedEffort.normalize(execution.perceivedEffort) != null;
 }
@@ -287,6 +288,38 @@ List<MachineEvent> activeMachineEventsInHistoryOrder(
 ) {
   return events.where((event) => !event.isDeleted).toList()
     ..sort(compareMachineEventsDescending);
+}
+
+MachineEvent? latestMachineModification(Iterable<MachineEvent> events) {
+  for (final event in activeMachineEventsInHistoryOrder(events)) {
+    if (event.isIncrease &&
+        event.previousValue != null &&
+        event.newValue != null &&
+        event.occurredAt != null) {
+      return event;
+    }
+  }
+  return null;
+}
+
+String formatLatestMachineModification(MachineEvent? event) {
+  if (event == null || event.previousValue == null || event.newValue == null) {
+    return 'Ul_Mod: --';
+  }
+  final type = switch (event.type) {
+    MachineEventType.repetitionsIncreased => 'rep',
+    MachineEventType.setsIncreased => 'ser',
+    MachineEventType.weightIncreased => 'peso',
+    _ => null,
+  };
+  final date = event.occurredAt;
+  if (type == null || date == null) return 'Ul_Mod: --';
+  final difference = event.newValue! - event.previousValue!;
+  final sign = difference >= 0 ? '+' : '';
+  final value = _normalizeNumber(difference).replaceAll('.', ',');
+  final day = date.day.toString().padLeft(2, '0');
+  final month = date.month.toString().padLeft(2, '0');
+  return 'Ul_Mod: $type | $sign$value | $day/$month';
 }
 
 int eligibleCompletionEventCount(Iterable<MachineEvent> events) {

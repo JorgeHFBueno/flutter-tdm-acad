@@ -21,6 +21,7 @@ class MyButton extends StatefulWidget {
 class MyButtonState extends State<MyButton> {
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 25),
       child: SizedBox(
@@ -36,15 +37,16 @@ class MyButtonState extends State<MyButton> {
                 },
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.all(18),
-            backgroundColor: Colors.teal,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(8),
             ),
           ),
           child: Text(
             widget.text,
-            style: const TextStyle(
-              color: Colors.white,
+            style: theme.textTheme.labelLarge?.copyWith(
+              color: widget.onPressed == null
+                  ? theme.disabledColor
+                  : theme.colorScheme.onPrimary,
               fontWeight: FontWeight.bold,
               fontSize: 15,
             ),

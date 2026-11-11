@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 
 import '../models/machine_configuration.dart';
 import '../models/machine_history.dart';
+import '../models/machine_catalog_view.dart';
 import '../models/workout.dart';
 import '../services/machine_history_service.dart';
+import '../services/machine_catalog_service.dart';
 import '../services/workout_service.dart';
 import 'machine_history_screen.dart';
 
@@ -21,6 +23,7 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
   final TextEditingController _nameController = TextEditingController();
   final WorkoutService _workoutService = const WorkoutService();
   final MachineService _machineService = const MachineService();
+  final MachineCatalogService _catalogService = MachineCatalogService();
   final List<String> _selectedMachineIds = [];
   List<MachineProfile> _machines = const [];
   bool _isLoading = true;
@@ -45,7 +48,16 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
       return;
     }
     try {
-      final machines = await _machineService.listForUser(user.uid);
+      await _catalogService.importLocalCatalogOnce(user.uid);
+      final results = await Future.wait([
+        _machineService.listForUser(user.uid),
+        _catalogService.listCatalog(),
+      ]);
+      final machines = resolveProfilesFromCatalog(
+        results[0] as List<MachineProfile>,
+        indexMachineCatalog(results[1] as dynamic),
+        activeOnly: true,
+      );
       if (!mounted) return;
       setState(() {
         _machines = machines;
@@ -73,6 +85,7 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
       return;
     }
 
+    if (_isSaving) return;
     setState(() => _isSaving = true);
     try {
       await _workoutService.createWorkout(
@@ -83,11 +96,13 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
         ),
       );
       if (!mounted) return;
-      _showSnackBar('Treino salvo com sucesso!');
-      setState(() {
-        _nameController.clear();
-        _selectedMachineIds.clear();
-      });
+      final messenger = ScaffoldMessenger.of(context);
+      _nameController.clear();
+      _selectedMachineIds.clear();
+      Navigator.of(context).pushNamedAndRemoveUntil('/menu', (route) => false);
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Treino salvo com sucesso!')),
+      );
     } catch (_) {
       if (!mounted) return;
       _showSnackBar('Erro ao salvar treino. Tente novamente.');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'screens/history_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/machine_history_screen.dart';
@@ -15,6 +16,7 @@ class Menu2 extends StatefulWidget {
 
 class _Menu2State extends State<Menu2> {
   int _currentIndex = 0;
+  DateTime? _lastBackPressedAt;
   late final List<_MenuPage> _pages;
 
   @override
@@ -58,58 +60,65 @@ class _Menu2State extends State<Menu2> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_pages[_currentIndex].title),
-      ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            DrawerHeader(
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              child: Align(
-                alignment: Alignment.bottomLeft,
-                child: Text(
-                  'Vanguard',
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontSize: 24,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleSystemBack();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(_pages[_currentIndex].title),
+        ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+                child: Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Text(
+                    'Vanguard',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontSize: 24,
+                    ),
                   ),
                 ),
               ),
-            ),
-            for (int i = 0; i < _pages.length; i++)
-              if (_pages[i].group == null)
-                ListTile(
-                  leading: Icon(_pages[i].icon),
-                  title: Text(_pages[i].title),
-                  selected: _currentIndex == i,
-                  onTap: () => _selectPage(i),
-                ),
-            ExpansionTile(
-              leading: const Icon(Icons.history),
-              title: const Text('Histórico'),
-              initiallyExpanded: _pages[_currentIndex].group == 'Histórico',
-              children: [
-                for (int i = 0; i < _pages.length; i++)
-                  if (_pages[i].group == 'Histórico')
-                    ListTile(
-                      leading: Icon(_pages[i].icon),
-                      title: Text(_pages[i].title),
-                      selected: _currentIndex == i,
-                      onTap: () => _selectPage(i),
-                    ),
-              ],
-            ),
-          ],
+              for (int i = 0; i < _pages.length; i++)
+                if (_pages[i].group == null)
+                  ListTile(
+                    leading: Icon(_pages[i].icon),
+                    title: Text(_pages[i].title),
+                    selected: _currentIndex == i,
+                    onTap: () => _selectPage(i),
+                  ),
+              ExpansionTile(
+                leading: const Icon(Icons.history),
+                title: const Text('Histórico'),
+                initiallyExpanded: _pages[_currentIndex].group == 'Histórico',
+                children: [
+                  for (int i = 0; i < _pages.length; i++)
+                    if (_pages[i].group == 'Histórico')
+                      ListTile(
+                        leading: Icon(_pages[i].icon),
+                        title: Text(_pages[i].title),
+                        selected: _currentIndex == i,
+                        onTap: () => _selectPage(i),
+                      ),
+                ],
+              ),
+            ],
+          ),
         ),
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _pages.map((page) => page.builder()).toList(),
+        body: IndexedStack(
+          index: _currentIndex,
+          children: _pages.map((page) => page.builder()).toList(),
+        ),
       ),
     );
   }
@@ -119,6 +128,22 @@ class _Menu2State extends State<Menu2> {
       _currentIndex = index;
     });
     Navigator.of(context).pop();
+  }
+
+  void _handleSystemBack() {
+    final now = DateTime.now();
+    final previous = _lastBackPressedAt;
+    if (previous != null && now.difference(previous).inMilliseconds <= 2000) {
+      SystemNavigator.pop();
+      return;
+    }
+    _lastBackPressedAt = now;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(content: Text('Clique novamente para sair do app')),
+      );
   }
 }
 

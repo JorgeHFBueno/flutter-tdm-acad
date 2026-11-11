@@ -75,4 +75,12 @@
 8. Incrementar contador: apenas percepcoes `light`, `adequate`, `high_fatigue`.
 9. Abrir historico: le snapshot da sessao, incluindo sessoes antigas.
 10. Registrar aumento: atualiza configuracao atual, cache `lastIncrease/previousIncrease` e evento.
+# Atualização — Etapa 6 (catálogo global)
+
+As definições atuais de Máquinas passaram a ter fonte principal em
+`machine_catalog/{machineId}`. `users/{uid}/machines/{machineId}` contém apenas
+estado pessoal; treinos continuam referenciando IDs e sessões são snapshots.
+O catálogo local de 31 itens permanece exclusivamente como seed idempotente.
+Consulte `ETAPA_6_CATALOGO_GLOBAL_DE_MAQUINAS.md` para campos, ciclo de vida e
+regras de resolução.
 
