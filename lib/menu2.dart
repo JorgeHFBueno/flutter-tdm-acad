@@ -39,7 +39,7 @@ class _Menu2State extends State<Menu2> {
         icon: Icons.list_alt,
       ),
       _MenuPage(
-        title: 'ConfiguraÃ§Ãµes',
+        title: 'Configurações',
         builder: () => const SettingsScreen(),
         icon: Icons.settings,
       ),

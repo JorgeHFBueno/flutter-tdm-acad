@@ -27,9 +27,9 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
       name: 'Aquecimento na esteira 1km',
       category: 'Perna'),
   ExerciseCatalogItem(id: 'extensora', name: 'Extensora', category: 'Perna'),
-  ExerciseCatalogItem(id: 'leg_45', name: 'Leg 45Â°', category: 'Perna'),
+  ExerciseCatalogItem(id: 'leg_45', name: 'Leg 45°', category: 'Perna'),
   ExerciseCatalogItem(
-      id: 'leg_press_45', name: 'Leg press 45Âº', category: 'Perna'),
+      id: 'leg_press_45', name: 'Leg press 45º', category: 'Perna'),
   ExerciseCatalogItem(
       id: 'mesa_flexora', name: 'Mesa flexora', category: 'Perna'),
   ExerciseCatalogItem(
@@ -42,12 +42,12 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
       category: absExerciseCategory),
   ExerciseCatalogItem(
       id: 'elevacao_lateral_halteres',
-      name: 'ElevaÃ§Ã£o lateral com halteres',
+      name: 'Elevação lateral com halteres',
       category: 'Peito'),
   ExerciseCatalogItem(
-      id: 'ombro_maquina', name: 'Ombro mÃ¡quina', category: 'Peito'),
+      id: 'ombro_maquina', name: 'Ombro máquina', category: 'Peito'),
   ExerciseCatalogItem(
-      id: 'peitoral_robo', name: 'Peitoral robÃ´', category: 'Peito'),
+      id: 'peitoral_robo', name: 'Peitoral robô', category: 'Peito'),
   ExerciseCatalogItem(
       id: 'supino_simples', name: 'Supino Simples', category: 'Peito'),
   ExerciseCatalogItem(
@@ -56,7 +56,7 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
       category: 'Peito'),
   ExerciseCatalogItem(
       id: 'supino_reto_maquina',
-      name: 'Supino reto (mÃ¡quina)',
+      name: 'Supino reto (máquina)',
       category: 'Peito'),
   ExerciseCatalogItem(
       id: 'triceps_barra',
@@ -74,7 +74,7 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
   ExerciseCatalogItem(
       id: 'abs_perna', name: '"ABS Perna"', category: absExerciseCategory),
   ExerciseCatalogItem(
-      id: 'antebraco_barra', name: 'AntebraÃ§o barra', category: 'Costas'),
+      id: 'antebraco_barra', name: 'Antebraço barra', category: 'Costas'),
   ExerciseCatalogItem(
       id: 'barra_w', name: 'Barra W', category: armExerciseCategory),
   ExerciseCatalogItem(
@@ -86,7 +86,7 @@ const List<ExerciseCatalogItem> exerciseCatalog = [
       name: 'Biceps cadeira',
       category: armExerciseCategory),
   ExerciseCatalogItem(
-      id: 'dorsal_maquina', name: 'Dorsal na mÃ¡quina', category: 'Costas'),
+      id: 'dorsal_maquina', name: 'Dorsal na máquina', category: 'Costas'),
   ExerciseCatalogItem(
       id: 'encolhimento', name: 'Encolhimento', category: 'Costas'),
   ExerciseCatalogItem(
