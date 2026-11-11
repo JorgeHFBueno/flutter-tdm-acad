@@ -286,7 +286,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
       final dateLabel = _formatDate(session.performedAt ?? session.endAt);
       buffer.writeln('- Sessão em $dateLabel');
       for (final exercise in session.exercises) {
-        if (exercise.isWarmup) {
+        if (exercise.isWarmup &&
+            exercise.status == ExerciseExecutionStatus.skipped) {
+          buffer.writeln('  • Aquecimento não realizado');
+        } else if (exercise.isWarmup) {
           buffer.writeln(
               '  • Aquecimento para ${exercise.targetExerciseName ?? 'exercício não informado'} (sem percepção, volume ${formatCompactNumber(exercise.volume)} kg reps)');
         } else {

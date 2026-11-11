@@ -68,23 +68,39 @@ List<SessionExerciseEntry> createPendingEntriesFromMachines(
   final orderedMachines = machines.toList();
   return [
     for (var index = 0; index < orderedMachines.length; index++)
-      SessionExerciseEntry(
-        originalIndex: index,
-        machine: orderedMachines[index],
-        execution: ExerciseExecution(
-          exerciseId: orderedMachines[index].exerciseId,
-          exerciseName: orderedMachines[index].exerciseName,
-          scientificName: orderedMachines[index].catalogScientificName,
-          category: orderedMachines[index].category,
-          type: orderedMachines[index].catalogType,
-          sets: const [],
-          configuredSets: orderedMachines[index].currentSets,
-          configuredRepetitions: orderedMachines[index].currentRepetitions,
-          configuredWeightKg: orderedMachines[index].currentWeightKg,
-          observationSnapshot: orderedMachines[index].observationText,
-        ),
-      ),
+      _pendingEntry(index, orderedMachines[index]),
   ];
+}
+
+/// Adds [machine] as a new pending exercise at the end of the session.
+List<SessionExerciseEntry> appendPendingEntry(
+  List<SessionExerciseEntry> entries,
+  MachineProfile machine,
+) {
+  var nextIndex = 0;
+  for (final entry in entries) {
+    if (entry.originalIndex >= nextIndex) nextIndex = entry.originalIndex + 1;
+  }
+  return [...entries, _pendingEntry(nextIndex, machine)];
+}
+
+SessionExerciseEntry _pendingEntry(int originalIndex, MachineProfile machine) {
+  return SessionExerciseEntry(
+    originalIndex: originalIndex,
+    machine: machine,
+    execution: ExerciseExecution(
+      exerciseId: machine.exerciseId,
+      exerciseName: machine.exerciseName,
+      scientificName: machine.catalogScientificName,
+      category: machine.category,
+      type: machine.catalogType,
+      sets: const [],
+      configuredSets: machine.currentSets,
+      configuredRepetitions: machine.currentRepetitions,
+      configuredWeightKg: machine.currentWeightKg,
+      observationSnapshot: machine.observationText,
+    ),
+  );
 }
 
 bool shouldCountMachineCompletion(ExerciseExecution execution) {

@@ -22,6 +22,28 @@ void main() {
   }
 
   group('workout execution flow', () {
+    test('appends exercise added mid-session as pending with next index', () {
+      final entries = createPendingEntriesFromMachines(machines.take(2));
+      final completedFirst = replaceEntryExecution(
+        entries,
+        0,
+        entries.first.execution.copyWith(completed: true),
+      );
+
+      final updated = appendPendingEntry(completedFirst, machines[2]);
+
+      expect(updated, hasLength(3));
+      expect(updated.first.execution.completed, isTrue);
+      final added = updated.last;
+      expect(added.originalIndex, 2);
+      expect(added.machine.exerciseId, 'leg');
+      expect(added.execution.exerciseId, 'leg');
+      expect(added.execution.completed, isFalse);
+      expect(added.execution.sets, isEmpty);
+      expect(added.execution.configuredWeightKg, 80);
+      expect(appendPendingEntry(const [], machines[0]).single.originalIndex, 0);
+    });
+
     test('calculates canonical exercise progress and protects empty workouts',
         () {
       final entries = createPendingEntriesFromMachines([

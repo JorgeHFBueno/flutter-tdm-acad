@@ -4,6 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('WorkoutSession', () {
+    test('skipped warmup keeps skipped status after round trip', () {
+      final warmup = ExerciseExecution(
+        exerciseName: 'Aquecimento',
+        sets: [],
+        completed: true,
+        isWarmup: true,
+        status: ExerciseExecutionStatus.skipped,
+      );
+
+      final restored = ExerciseExecution.fromMap(warmup.toMap());
+
+      expect(restored.isWarmup, isTrue);
+      expect(restored.completed, isTrue);
+      expect(restored.status, ExerciseExecutionStatus.skipped);
+    });
+
     test('deserializes session for missing original workout', () {
       final session = WorkoutSession.fromMap({
         'workoutId': 'deleted-workout-id',

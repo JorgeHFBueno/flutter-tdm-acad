@@ -10,6 +10,7 @@ import '../components/observation_dialog.dart';
 import '../models/machine_event.dart';
 import '../models/machine_configuration.dart';
 import '../models/machine_history.dart';
+import '../models/machine_catalog_item.dart';
 import '../models/machine_catalog_view.dart';
 import '../models/workout.dart';
 import '../models/workout_execution_flow.dart';
@@ -50,6 +51,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
   bool _isLoadingMachines = false;
   bool _isSaving = false;
   bool _isCompletingExercise = false;
+  bool _isAddingExercise = false;
   bool _hasPendingAutosave = false;
   bool _isAutosaving = false;
   Object? _autosaveError;
@@ -119,21 +121,25 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     final user = _currentUserOrNull();
     if (user == null || _eventSubscriptions.isNotEmpty) return;
     for (final machine in machines) {
-      _eventSubscriptions.add(
-        _machineService
-            .watchEvents(
-          ownerUid: user.uid,
-          exerciseId: machine.exerciseId,
-        )
-            .listen(
-          (events) {
-            if (!mounted) return;
-            setState(() => _eventsByExerciseId[machine.exerciseId] = events);
-          },
-          onError: (_) {},
-        ),
-      );
+      _watchEventsFor(user.uid, machine);
     }
+  }
+
+  void _watchEventsFor(String ownerUid, MachineProfile machine) {
+    _eventSubscriptions.add(
+      _machineService
+          .watchEvents(
+        ownerUid: ownerUid,
+        exerciseId: machine.exerciseId,
+      )
+          .listen(
+        (events) {
+          if (!mounted) return;
+          setState(() => _eventsByExerciseId[machine.exerciseId] = events);
+        },
+        onError: (_) {},
+      ),
+    );
   }
 
   void _restoreInitialSessionIfAvailable() {
@@ -204,6 +210,15 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
         appBar: AppBar(
           title: Text('Executar treino: ${widget.workout.name}'),
           actions: [
+            IconButton(
+              tooltip: 'Adicionar exercicio',
+              icon: const Icon(Icons.playlist_add),
+              onPressed: _missingMachineIds.isNotEmpty ||
+                      _isSaving ||
+                      _isAddingExercise
+                  ? null
+                  : _addExercise,
+            ),
             IconButton(
               tooltip: 'Descartar treino',
               icon: const Icon(Icons.delete_outline),
@@ -372,6 +387,10 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                                 _scheduleAutosave();
                               },
                             ),
+                  ),
+                  TextButton(
+                    onPressed: _skipWarmup,
+                    child: const Text('Pular aquecimento'),
                   ),
                   TextButton.icon(
                     icon: const Icon(Icons.flag),
@@ -747,6 +766,72 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     ];
   }
 
+  Future<void> _addExercise() async {
+    final user = _currentUserOrNull();
+    if (user == null) {
+      _showSnackBar('Usuario nao autenticado.');
+      return;
+    }
+    final choice = await showDialog<_AddExerciseChoice>(
+      context: context,
+      builder: (_) => _AddExerciseDialog(
+        catalog: _catalogService.listCatalog(),
+        excludedIds: {
+          for (final entry in _sessionEntries) entry.machine.exerciseId,
+        },
+      ),
+    );
+    if (choice == null || !mounted) return;
+    setState(() => _isAddingExercise = true);
+    try {
+      final catalogItem = choice.existing ??
+          await _catalogService.add(
+            uid: user.uid,
+            popularName: choice.newName!,
+            scientificName: choice.newName!,
+            category: choice.newCategory!,
+            type: MachineCatalogType.outro,
+            origin: machineCatalogOriginQuickAdd,
+            scientificNamePending: true,
+          );
+      var profile =
+          await _machineService.getByExerciseId(user.uid, catalogItem.id);
+      if (profile == null) {
+        await _machineService.ensureMachine(
+          ownerUid: user.uid,
+          exerciseId: catalogItem.id,
+          exerciseName: catalogItem.popularName,
+          category: catalogItem.category,
+        );
+        profile =
+            await _machineService.getByExerciseId(user.uid, catalogItem.id);
+      }
+      if (profile == null) throw StateError('Perfil nao criado');
+      final machine = resolveProfilesFromCatalog(
+        [profile],
+        {catalogItem.id: catalogItem},
+        preserveIds: {catalogItem.id},
+      ).single;
+      if (!mounted) return;
+      setState(() {
+        _machinesById[machine.exerciseId] = machine;
+        _sessionEntries = appendPendingEntry(_sessionEntries, machine);
+        if (_phase == WorkoutExecutionPhase.completed) {
+          _phase = WorkoutExecutionPhase.choosingNextExercise;
+        }
+      });
+      _watchEventsFor(user.uid, machine);
+      _scheduleAutosave(immediate: true);
+      _showSnackBar('${machine.exerciseName} adicionado ao treino.');
+    } on MachineCatalogDuplicateException catch (error) {
+      _showSnackBar(error.message);
+    } catch (_) {
+      _showSnackBar('Erro ao adicionar exercicio. Tente novamente.');
+    } finally {
+      if (mounted) setState(() => _isAddingExercise = false);
+    }
+  }
+
   Future<void> _openAddSetDialog({
     required String title,
     required double initialWeightKg,
@@ -865,6 +950,17 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
         _activeOriginalIndex = _sessionEntries[firstPendingIndex].originalIndex;
         _phase = WorkoutExecutionPhase.executingExercise;
       }
+    });
+    _scheduleAutosave(immediate: true);
+  }
+
+  void _skipWarmup() {
+    setState(() {
+      _warmupExecution = createWarmupExecution(completed: true).copyWith(
+        status: ExerciseExecutionStatus.skipped,
+      );
+      _activeOriginalIndex = null;
+      _phase = WorkoutExecutionPhase.choosingNextExercise;
     });
     _scheduleAutosave(immediate: true);
   }
@@ -1325,6 +1421,137 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _AddExerciseChoice {
+  const _AddExerciseChoice.existing(MachineCatalogItem this.existing)
+      : newName = null,
+        newCategory = null;
+
+  const _AddExerciseChoice.create(String this.newName, String this.newCategory)
+      : existing = null;
+
+  final MachineCatalogItem? existing;
+  final String? newName;
+  final String? newCategory;
+}
+
+class _AddExerciseDialog extends StatefulWidget {
+  const _AddExerciseDialog({
+    required this.catalog,
+    required this.excludedIds,
+  });
+
+  final Future<List<MachineCatalogItem>> catalog;
+  final Set<String> excludedIds;
+
+  @override
+  State<_AddExerciseDialog> createState() => _AddExerciseDialogState();
+}
+
+class _AddExerciseDialogState extends State<_AddExerciseDialog> {
+  String _query = '';
+  String? _newCategory;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Adicionar exercicio'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: FutureBuilder<List<MachineCatalogItem>>(
+          future: widget.catalog,
+          builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              return const Text('Erro ao carregar catalogo.');
+            }
+            final catalog = snapshot.data;
+            if (catalog == null) {
+              return const Padding(
+                padding: EdgeInsets.all(16),
+                child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            return _buildContent(catalog);
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent(List<MachineCatalogItem> catalog) {
+    final name = _query.trim();
+    final normalizedName = normalizeCatalogText(name);
+    final matches = filterAndSortMachineCatalog(
+      combineMachineCatalog(catalog, const []),
+      query: name,
+      status: MachineCatalogStatus.active,
+    ).where((item) => !widget.excludedIds.contains(item.catalog.id)).take(20);
+    final nameExists = catalog.any((item) =>
+        normalizeCatalogText(item.popularName) == normalizedName ||
+        normalizeCatalogText(item.scientificName) == normalizedName);
+    final canCreate = validateCatalogName(name) == null && !nameExists;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Buscar ou digitar nome',
+          ),
+          onChanged: (value) => setState(() => _query = value),
+        ),
+        const SizedBox(height: 8),
+        Flexible(
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              for (final item in matches)
+                ListTile(
+                  title: Text(item.popularName),
+                  subtitle: Text(MachineCatalogCategory.label(item.category)),
+                  onTap: () => Navigator.of(context)
+                      .pop(_AddExerciseChoice.existing(item.catalog)),
+                ),
+            ],
+          ),
+        ),
+        if (canCreate) ...[
+          const Divider(),
+          Text('Novo exercicio: "$name"'),
+          DropdownButtonFormField<String>(
+            value: _newCategory,
+            decoration: const InputDecoration(labelText: 'Categoria'),
+            items: [
+              for (final category in MachineCatalogCategory.values)
+                DropdownMenuItem(
+                  value: category,
+                  child: Text(MachineCatalogCategory.label(category)),
+                ),
+            ],
+            onChanged: (value) => setState(() => _newCategory = value),
+          ),
+          const SizedBox(height: 8),
+          FilledButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Criar e adicionar'),
+            onPressed: _newCategory == null
+                ? null
+                : () => Navigator.of(context)
+                    .pop(_AddExerciseChoice.create(name, _newCategory!)),
+          ),
+        ],
+      ],
+    );
   }
 }
 

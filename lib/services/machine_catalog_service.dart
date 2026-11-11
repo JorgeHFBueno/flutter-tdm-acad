@@ -144,6 +144,8 @@ class MachineCatalogService {
     required String scientificName,
     required String category,
     required String type,
+    String origin = machineCatalogOriginManual,
+    bool scientificNamePending = false,
   }) async {
     final popular = popularName.trim();
     final scientific = scientificName.trim();
@@ -162,8 +164,8 @@ class MachineCatalogService {
       'atualizado_em': now,
       'atualizado_por': uid,
       'schema_version': machineCatalogSchemaVersion,
-      'origem': machineCatalogOriginManual,
-      'nome_cientifico_pendente': false,
+      'origem': origin,
+      'nome_cientifico_pendente': scientificNamePending,
     });
     return MachineCatalogItem(
       id: ref.id,
@@ -172,6 +174,8 @@ class MachineCatalogService {
       category: category,
       type: type,
       createdByUid: uid,
+      origin: origin,
+      scientificNamePending: scientificNamePending,
     );
   }
 

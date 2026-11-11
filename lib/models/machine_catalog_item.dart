@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 const int machineCatalogSchemaVersion = 1;
 const String machineCatalogOriginLocalSeed = 'local_seed';
 const String machineCatalogOriginManual = 'manual';
+const String machineCatalogOriginQuickAdd = 'criacao_rapida';
 
 class MachineCatalogItem {
   final String id;

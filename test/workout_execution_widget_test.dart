@@ -38,6 +38,35 @@ void main() {
     expect(find.text('Remada baixa'), findsNothing);
   });
 
+  testWidgets('warmup can be skipped and exercises become choosable',
+      (tester) async {
+    final workout = Workout(
+      id: 'workout-1',
+      name: 'Treino A',
+      ownerUid: 'user-1',
+      machineIds: const ['supino', 'remada'],
+    );
+
+    await tester.pumpWidget(
+      _executionApp(
+        workout: workout,
+        machines: [
+          _machine('supino', 'Supino reto'),
+          _machine('remada', 'Remada baixa'),
+        ],
+      ),
+    );
+
+    expect(find.byTooltip('Adicionar exercicio'), findsOneWidget);
+    await tester.tap(find.text('Pular aquecimento'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Concluir aquecimento'), findsNothing);
+    expect(find.text('Escolha o proximo exercicio'), findsOneWidget);
+    expect(find.text('Supino reto'), findsOneWidget);
+    expect(find.text('Remada baixa'), findsOneWidget);
+  });
+
   testWidgets('completed warmup focuses only the first pending exercise',
       (tester) async {
     final workout = Workout(

@@ -84,3 +84,10 @@ O catálogo local de 31 itens permanece exclusivamente como seed idempotente.
 Consulte `ETAPA_6_CATALOGO_GLOBAL_DE_MAQUINAS.md` para campos, ciclo de vida e
 regras de resolução.
 
+# Atualização — Etapa 7 (treino livre, fase 1)
+
+A execução aceita adicionar exercícios no meio (busca no catálogo ou criação
+rápida com `origem = criacao_rapida`) e o aquecimento pode ser pulado
+(`status = skipped`). A ficha não é alterada. Detalhes em
+`ETAPA_7_TREINO_LIVRE.md`.
+

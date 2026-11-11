@@ -115,7 +115,10 @@ class _WorkoutSessionDetailScreenState
               ],
             ),
             const SizedBox(height: 6),
-            if (exercise.isWarmup)
+            if (exercise.isWarmup &&
+                exercise.status == ExerciseExecutionStatus.skipped)
+              const Text('Aquecimento não realizado')
+            else if (exercise.isWarmup)
               Text(
                 'Exercício utilizado: ${exercise.targetExerciseName ?? 'Não informado'}',
               ),
@@ -249,7 +252,10 @@ class _WorkoutSessionDetailScreenState
           'Data: ${_formatDateTime(session.performedAt ?? session.endAt)}');
 
     for (final exercise in session.exercises) {
-      if (exercise.isWarmup) {
+      if (exercise.isWarmup &&
+          exercise.status == ExerciseExecutionStatus.skipped) {
+        buffer.writeln('• Aquecimento não realizado');
+      } else if (exercise.isWarmup) {
         buffer.writeln(
             '• Aquecimento para ${exercise.targetExerciseName ?? 'exercício não informado'} (sem percepção, volume ${formatCompactNumber(exercise.volume)} kg reps)');
       } else {
