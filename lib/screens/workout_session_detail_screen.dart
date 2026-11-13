@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -68,14 +69,15 @@ class _WorkoutSessionDetailScreenState
               const SizedBox(height: 8),
               ...session.exercises.map(_buildExerciseCard),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('Analisar este treino (IA)'),
-                  onPressed: _analyzeCurrentSession,
-                ),
-              )
+              if (!kIsWeb)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Analisar este treino (IA)'),
+                    onPressed: _analyzeCurrentSession,
+                  ),
+                )
             ],
           ),
         ),

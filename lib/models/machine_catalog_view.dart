@@ -3,7 +3,7 @@ import 'machine_history.dart';
 
 enum MachineCatalogSort { popularName, scientificName }
 
-enum MachineCatalogStatus { all, active, retired }
+enum MachineCatalogStatus { all, active, retired, pending }
 
 class ResolvedMachineCatalogItem {
   final MachineCatalogItem catalog;
@@ -60,6 +60,10 @@ List<ResolvedMachineCatalogItem> filterAndSortMachineCatalog(
       return false;
     }
     if (status == MachineCatalogStatus.retired && !item.catalog.isRetired) {
+      return false;
+    }
+    if (status == MachineCatalogStatus.pending &&
+        !item.catalog.isPendingReview) {
       return false;
     }
     if (normalizedQuery.isEmpty) return true;

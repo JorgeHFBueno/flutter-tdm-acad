@@ -167,6 +167,41 @@ void main() {
           hasLength(4));
     });
 
+    test('pending filter keeps only unreviewed quick-added items', () {
+      MachineCatalogItem quick(String id, {required bool pending}) =>
+          MachineCatalogItem(
+            id: id,
+            popularName: id,
+            scientificName: id,
+            category: 'peito',
+            type: 'outro',
+            createdByUid: 'uid',
+            origin: machineCatalogOriginQuickAdd,
+            scientificNamePending: pending,
+          );
+      const seed = MachineCatalogItem(
+        id: 'seed',
+        popularName: 'Seed',
+        scientificName: 'Seed',
+        category: 'peito',
+        type: 'maquina',
+        createdByUid: 'uid',
+        origin: machineCatalogOriginLocalSeed,
+        scientificNamePending: true,
+      );
+
+      final visible = filterAndSortMachineCatalog(
+        combineMachineCatalog([
+          quick('nova', pending: true),
+          quick('revisada', pending: false),
+          seed,
+        ], const []),
+        status: MachineCatalogStatus.pending,
+      );
+
+      expect(visible.map((item) => item.catalog.id), ['nova']);
+    });
+
     test('scientific sort uses secondary name then stable id', () {
       final tied = [
         _catalog('z', 'Beta', scientific: 'Mesmo'),

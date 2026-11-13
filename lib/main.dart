@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app/appearance/app_appearance_controller.dart';
@@ -14,25 +15,26 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1) Carrega o .env
-  await dotenv.load(fileName: ".env");
-
-  // 2) Inicializa Firebase
+  // 1) Inicializa Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 3) Lê a chave do Gemini do .env
-  final geminiApiKey = dotenv.env['GEMINI_API_KEY'];
+  // 2) Gemini so no app nativo: na web o .env nao e publicado
+  //    (firebase.json ignora arquivos ".*") e a analise por IA fica oculta.
+  if (!kIsWeb) {
+    await dotenv.load(fileName: ".env");
+    final geminiApiKey = dotenv.env['GEMINI_API_KEY'];
 
-  if (geminiApiKey == null || geminiApiKey.isEmpty) {
-    // Se não achar a chave, loga no console pra você ver
-    debugPrint('GEMINI_API_KEY não encontrada no .env');
-  } else {
-    Gemini.init(
-      apiKey: geminiApiKey,
-      enableDebugging: true,
-    );
+    if (geminiApiKey == null || geminiApiKey.isEmpty) {
+      // Se não achar a chave, loga no console pra você ver
+      debugPrint('GEMINI_API_KEY não encontrada no .env');
+    } else {
+      Gemini.init(
+        apiKey: geminiApiKey,
+        enableDebugging: true,
+      );
+    }
   }
 
   // 4) Push notifications

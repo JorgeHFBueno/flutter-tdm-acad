@@ -81,6 +81,10 @@ class MachineCatalogItem {
         'nome_cientifico_pendente': scientificNamePending,
       };
 
+  /// Created mid-workout and not yet reviewed in the full catalog editor.
+  bool get isPendingReview =>
+      origin == machineCatalogOriginQuickAdd && scientificNamePending;
+
   bool get isComplete =>
       id.trim().isNotEmpty &&
       popularName.trim().isNotEmpty &&

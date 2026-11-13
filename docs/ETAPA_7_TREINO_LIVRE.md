@@ -36,11 +36,27 @@ e o aquecimento passa a ser opcional.
 - Detalhe da sessão e prompts de análise mostram "Aquecimento não realizado".
 - Percepção ao concluir exercícios continua obrigatória.
 
+## Fase 2 — revisar pendentes na web
+
+- Pendente = `origem = criacao_rapida` e `nome_cientifico_pendente = true`
+  (`MachineCatalogItem.isPendingReview`). Os 31 itens do seed não contam.
+- Tela Máquinas: filtro de status "Pendentes", etiqueta PENDENTE no card e aviso
+  "N pendente(s) de revisão" no topo (toque filtra).
+- Adicionar e editar o catálogo completo só na web (`kIsWeb`). No APK ficam a
+  criação rápida no treino e aposentar/reativar. Salvar a edição tira a marca
+  de pendente; a ID não muda.
+- Web sem análise por IA: `main.dart` não carrega `.env` nem inicia o Gemini na
+  web, os botões de análise ficam ocultos e `WorkoutAnalysisService` só acessa
+  `Gemini.instance` ao analisar (antes quebrava a abertura da web).
+- Hosting: site `vanguard-treino` (https://vanguard-treino.web.app), publicando
+  `build/web` com rewrite SPA. `firebase.json` ignora `**/.*`, então o `.env`
+  não é enviado. Publicar: `flutter build web --release` e
+  `firebase deploy --only hosting`.
+- Login Google na web exige o domínio `vanguard-treino.web.app` em Firebase
+  Console → Authentication → Settings → Domínios autorizados.
+
 ## Fora desta fase
 
-- Fase 2: tela "Revisar pendentes" (de preferência na web) para completar nome
-  científico, tipo e categoria dos itens `origem = criacao_rapida`. A edição
-  completa do catálogo continua disponível na tela Máquinas.
 - Fase 3 (provavelmente desnecessária): mesclar duplicatas.
 
 ## Ideias aceitas, não implementadas

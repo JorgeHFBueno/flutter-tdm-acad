@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -180,14 +181,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
               Text('Exercícios: $exerciseCount'),
               Text('Volume total: $totalVolume kg reps'),
               const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton.icon(
-                  icon: const Icon(Icons.auto_awesome),
-                  label: const Text('Analisar histórico deste treino (IA)'),
-                  onPressed: () => _analyzeHistory(session),
-                ),
-              )
+              if (!kIsWeb)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.auto_awesome),
+                    label: const Text('Analisar histórico deste treino (IA)'),
+                    onPressed: () => _analyzeHistory(session),
+                  ),
+                )
             ],
           ),
         ),

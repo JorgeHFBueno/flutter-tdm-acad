@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../models/machine_catalog_item.dart';
@@ -115,15 +116,29 @@ class _MachinesScreenState extends State<MachinesScreen> {
       status: _status,
       sort: _sort,
     );
+    final pendingCount = catalog.where((item) => item.isPendingReview).length;
     return ListView(padding: const EdgeInsets.all(16), children: [
-      Align(
-        alignment: Alignment.centerRight,
-        child: ElevatedButton.icon(
-          onPressed: () => _editCatalog(uid),
-          icon: const Icon(Icons.add),
-          label: const Text('Adicionar ao catálogo'),
+      // Full catalog editing lives on the web; the APK only quick-adds.
+      if (kIsWeb)
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton.icon(
+            onPressed: () => _editCatalog(uid),
+            icon: const Icon(Icons.add),
+            label: const Text('Adicionar ao catálogo'),
+          ),
         ),
-      ),
+      if (pendingCount > 0)
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.rate_review_outlined),
+            title: Text('$pendingCount pendente(s) de revisão'),
+            subtitle: Text(kIsWeb
+                ? 'Toque para filtrar e complete pelo menu Editar catálogo.'
+                : 'Revise pela versão web.'),
+            onTap: () => setState(() => _status = MachineCatalogStatus.pending),
+          ),
+        ),
       const SizedBox(height: 8),
       TextField(
         controller: _search,
@@ -171,6 +186,9 @@ class _MachinesScreenState extends State<MachinesScreen> {
                 DropdownMenuItem(
                     value: MachineCatalogStatus.retired,
                     child: Text('Aposentadas')),
+                DropdownMenuItem(
+                    value: MachineCatalogStatus.pending,
+                    child: Text('Pendentes')),
               ],
               onChanged: (value) => setState(() => _status = value!),
             ),
@@ -312,6 +330,7 @@ class _CatalogCard extends StatelessWidget {
           Text(
               '${MachineCatalogCategory.label(item.category)} · ${MachineCatalogType.label(item.catalog.type)}'),
           Text([
+            if (item.catalog.isPendingReview) 'PENDENTE',
             if (item.catalog.isRetired) 'APOSENTADA',
             item.isRegistered ? 'Cadastrada' : 'Não cadastrada',
           ].join(' · ')),
@@ -325,7 +344,9 @@ class _CatalogCard extends StatelessWidget {
         trailing: PopupMenuButton<String>(
           onSelected: onAction,
           itemBuilder: (_) => [
-            const PopupMenuItem(value: 'edit', child: Text('Editar catálogo')),
+            if (kIsWeb)
+              const PopupMenuItem(
+                  value: 'edit', child: Text('Editar catálogo')),
             PopupMenuItem(
               value: item.catalog.isRetired ? 'reactivate' : 'retire',
               child: Text(item.catalog.isRetired ? 'Reativar' : 'Aposentar'),
