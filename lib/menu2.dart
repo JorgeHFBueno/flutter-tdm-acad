@@ -1,3 +1,8 @@
+import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/history_screen.dart';
@@ -5,7 +10,9 @@ import 'screens/home_screen.dart';
 import 'screens/machine_history_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/workout_creation_screen.dart';
+import 'screens/workout_analysis_history_screen.dart';
 import 'screens/workout_list_screen.dart';
+import 'services/notification_service.dart';
 
 class Menu2 extends StatefulWidget {
   const Menu2({super.key});
@@ -55,7 +62,34 @@ class _Menu2State extends State<Menu2> {
         icon: Icons.fitness_center,
         group: 'Histórico',
       ),
+      _MenuPage(
+        title: 'Análises',
+        builder: () => WorkoutAnalysisHistoryScreen(embedInScaffold: false),
+        icon: Icons.analytics_outlined,
+        group: 'Histórico',
+      ),
     ];
+    _setUpPush();
+  }
+
+  /// Registers this phone for report pushes and opens "Análises" when a
+  /// report notification is tapped. Fire-and-forget: never blocks the menu.
+  void _setUpPush() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (kIsWeb || uid == null) return;
+    unawaited(NotificationService().registerDevice(uid));
+    FirebaseMessaging.onMessageOpenedApp.listen(_openFromPush);
+    unawaited(
+      FirebaseMessaging.instance.getInitialMessage().then((message) {
+        if (message != null) _openFromPush(message);
+      }).catchError((_) {}),
+    );
+  }
+
+  void _openFromPush(RemoteMessage message) {
+    if (!mounted || message.data['route'] != 'analises') return;
+    final index = _pages.indexWhere((page) => page.title == 'Análises');
+    if (index >= 0) setState(() => _currentIndex = index);
   }
 
   @override

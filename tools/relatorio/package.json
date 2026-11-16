@@ -1,0 +1,11 @@
+{
+  "name": "vanguard-relatorio",
+  "private": true,
+  "description": "Métricas e publicação das análises periódicas do Vanguard",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

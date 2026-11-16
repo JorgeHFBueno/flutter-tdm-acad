@@ -25,7 +25,7 @@ List<MachineCatalogSeedItem> get localMachineCatalogSeed => [
           id: item.id,
           popularName: item.name,
           scientificName: item.name,
-          category: _canonicalCategory(item.category, item.id),
+          category: canonicalMachineCategory(item.category, item.id),
           type: _inferredType(item.id, item.name),
           scientificNamePending: true,
         ),
@@ -37,7 +37,8 @@ List<MachineCatalogSeedItem> missingMachineCatalogSeeds(
 ) =>
     seed.where((item) => !existingIds.contains(item.id)).toList();
 
-String _canonicalCategory(String legacy, String id) {
+/// Maps a legacy local-catalog category to a [MachineCatalogCategory] key.
+String canonicalMachineCategory(String legacy, String id) {
   final value = legacy.toLowerCase();
   if (id.contains('panturrilha')) {
     return MachineCatalogCategory.panturrilhas;

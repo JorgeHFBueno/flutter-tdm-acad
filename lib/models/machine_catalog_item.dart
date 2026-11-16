@@ -134,6 +134,9 @@ class MachineCatalogCategory {
     outros: 'Outros',
   };
   static String label(String value) => labels[value] ?? 'Outros';
+
+  /// Label for a catalog key; legacy free-text categories are shown as saved.
+  static String display(String value) => labels[value] ?? value;
 }
 
 class MachineCatalogType {

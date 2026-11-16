@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../components/observation_dialog.dart';
 import '../data/exercise_catalog.dart';
+import '../data/machine_catalog_seed.dart';
 import '../models/machine_configuration.dart';
 import '../models/machine_event.dart';
 import '../models/machine_history.dart';
@@ -354,7 +355,7 @@ class _CreateMachineDialogState extends State<_CreateMachineDialog> {
       MachineProfile(
         exerciseId: item.id,
         exerciseName: item.name,
-        category: item.category,
+        category: canonicalMachineCategory(item.category, item.id),
         ownerUid: widget.ownerUid,
         observation: _observationController.text.trim(),
         currentSets: parsePositiveInt(_setsController.text),
@@ -391,7 +392,7 @@ class _MachineCard extends StatelessWidget {
                 style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
-              Text(machine.category),
+              Text(MachineCatalogCategory.display(machine.category)),
               const SizedBox(height: 8),
               Text(config.compactLabel),
               if (!config.isComplete)
@@ -561,7 +562,7 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
                     '${MachineCatalogCategory.label(widget.catalogItem!.category)} · '
                     '${MachineCatalogType.label(widget.catalogItem!.type)}'),
               ] else
-                Text(machine.category),
+                Text(MachineCatalogCategory.display(machine.category)),
               const SizedBox(height: 12),
               Text('Configuracao atual: ${config.compactLabel}'),
               if (!config.isComplete)

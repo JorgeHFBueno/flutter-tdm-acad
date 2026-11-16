@@ -7,7 +7,9 @@ import '../services/workout_analysis_log_service.dart';
 import 'workout_analysis_detail_screen.dart';
 
 class WorkoutAnalysisHistoryScreen extends StatelessWidget {
-  WorkoutAnalysisHistoryScreen({super.key});
+  WorkoutAnalysisHistoryScreen({super.key, this.embedInScaffold = true});
+
+  final bool embedInScaffold;
 
   final WorkoutAnalysisLogService _logService = WorkoutAnalysisLogService();
 
@@ -15,46 +17,47 @@ class WorkoutAnalysisHistoryScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
 
+    final body = user == null
+        ? const Center(child: Text('Usuário não autenticado.'))
+        : StreamBuilder<List<WorkoutAnalysisLog>>(
+            stream: _logService.getLogsForUser(user.uid),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              if (snapshot.hasError) {
+                debugPrint(
+                  'Erro ao carregar histórico de análises da IA: ${snapshot.error}',
+                );
+                return const Center(
+                  child: Text('Erro ao carregar histórico de análises da IA.'),
+                );
+              }
+
+              final logs = snapshot.data ?? [];
+              if (logs.isEmpty) {
+                return const Center(
+                  child: Text('Você ainda não possui análises salvas.'),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(16),
+                itemCount: logs.length,
+                itemBuilder: (context, index) {
+                  final log = logs[index];
+                  return _LogCard(log: log);
+                },
+              );
+            },
+          );
+    if (!embedInScaffold) return body;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Histórico de análises'),
       ),
-      body: user == null
-          ? const Center(child: Text('Usuário não autenticado.'))
-          : StreamBuilder<List<WorkoutAnalysisLog>>(
-              stream: _logService.getLogsForUser(user.uid),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (snapshot.hasError) {
-                  debugPrint(
-                    'Erro ao carregar histórico de análises da IA: ${snapshot.error}',
-                  );
-                  return const Center(
-                    child:
-                        Text('Erro ao carregar histórico de análises da IA.'),
-                  );
-                }
-
-                final logs = snapshot.data ?? [];
-                if (logs.isEmpty) {
-                  return const Center(
-                    child: Text('Você ainda não possui análises salvas.'),
-                  );
-                }
-
-                return ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: logs.length,
-                  itemBuilder: (context, index) {
-                    final log = logs[index];
-                    return _LogCard(log: log);
-                  },
-                );
-              },
-            ),
+      body: body,
     );
   }
 }
@@ -75,6 +78,12 @@ class _LogCard extends StatelessWidget {
         return 'Histórico';
       case 'session':
         return 'Sessão';
+      case 'semanal':
+        return 'Semanal';
+      case 'mensal':
+        return 'Mensal';
+      case 'geral':
+        return 'Geral';
       default:
         return type;
     }
