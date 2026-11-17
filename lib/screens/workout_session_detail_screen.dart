@@ -15,7 +15,6 @@ class WorkoutSessionDetailScreen extends StatefulWidget {
 
 class _WorkoutSessionDetailScreenState
     extends State<WorkoutSessionDetailScreen> {
-
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
@@ -123,7 +122,8 @@ class _WorkoutSessionDetailScreenState
                 (set) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2.0),
                   child: Text(
-                    'Série ${set.setNumber}: ${set.reps} reps - ${formatKg(set.weightKg)}',
+                    'Série ${set.setNumber}: ${set.reps} reps - '
+                    '${formatKg(set.weightKg, perSide: exercise.loadPerSide)}',
                   ),
                 ),
               ),
@@ -167,7 +167,10 @@ class _WorkoutSessionDetailScreenState
         : '${exercise.configuredRepetitions}';
     final weight = exercise.configuredWeightKg == null
         ? 'sem peso'
-        : formatKg(exercise.configuredWeightKg!);
+        : formatKg(
+            exercise.configuredWeightKg!,
+            perSide: exercise.loadPerSide,
+          );
     return '$sets x $reps - $weight';
   }
 }

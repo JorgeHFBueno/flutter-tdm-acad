@@ -258,7 +258,7 @@ int performedTotalRepetitions(ExerciseExecution execution) {
 
 double performedVolume(ExerciseExecution execution) {
   if (PerceivedEffort.isSkipped(execution.perceivedEffort)) return 0;
-  return calculateSetsVolume(execution.sets);
+  return execution.volume;
 }
 
 String deterministicIncreaseEventId(

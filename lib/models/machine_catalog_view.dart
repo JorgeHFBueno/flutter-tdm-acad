@@ -1,3 +1,4 @@
+import '../data/machine_catalog_seed.dart';
 import 'machine_catalog_item.dart';
 import 'machine_history.dart';
 
@@ -123,6 +124,28 @@ Map<String, MachineCatalogItem> indexMachineCatalog(
 ) =>
     {for (final item in catalog) item.id: item};
 
+/// Machines grouped by category (catalog order), each group by name.
+List<MapEntry<String, List<MachineProfile>>> groupMachinesByCategory(
+  Iterable<MachineProfile> machines,
+) {
+  final groups = <String, List<MachineProfile>>{};
+  for (final machine in machines) {
+    final key = machineCategoryKey(machine.category, machine.exerciseId);
+    groups.putIfAbsent(key, () => []).add(machine);
+  }
+  int order(String key) => MachineCatalogCategory.values.indexOf(key);
+  final keys = groups.keys.toList()..sort((a, b) => order(a) - order(b));
+  return [
+    for (final key in keys)
+      MapEntry(
+        key,
+        groups[key]!
+          ..sort((a, b) => normalizeCatalogText(a.exerciseName)
+              .compareTo(normalizeCatalogText(b.exerciseName))),
+      ),
+  ];
+}
+
 List<MachineProfile> resolveProfilesFromCatalog(
   Iterable<MachineProfile> profiles,
   Map<String, MachineCatalogItem> catalogById, {
@@ -146,5 +169,6 @@ List<MachineProfile> resolveProfilesFromCatalog(
                   : catalog.category,
               catalogScientificName: catalog.scientificName,
               catalogType: catalog.type,
+              catalogLoadPerSide: catalog.loadPerSide,
             ),
     ];

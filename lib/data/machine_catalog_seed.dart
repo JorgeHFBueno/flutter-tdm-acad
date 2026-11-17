@@ -37,6 +37,12 @@ List<MachineCatalogSeedItem> missingMachineCatalogSeeds(
 ) =>
     seed.where((item) => !existingIds.contains(item.id)).toList();
 
+/// [category] if it is already a catalog key, otherwise its canonical key.
+String machineCategoryKey(String category, String id) =>
+    MachineCatalogCategory.values.contains(category)
+        ? category
+        : canonicalMachineCategory(category, id);
+
 /// Maps a legacy local-catalog category to a [MachineCatalogCategory] key.
 String canonicalMachineCategory(String legacy, String id) {
   final value = legacy.toLowerCase();

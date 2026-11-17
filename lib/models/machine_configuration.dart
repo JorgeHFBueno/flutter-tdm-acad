@@ -7,6 +7,7 @@ class ResolvedExerciseConfiguration {
   final String observation;
   final bool hasMachine;
   final bool isComplete;
+  final bool loadPerSide;
 
   const ResolvedExerciseConfiguration({
     required this.configuredSets,
@@ -15,11 +16,13 @@ class ResolvedExerciseConfiguration {
     required this.observation,
     required this.hasMachine,
     required this.isComplete,
+    this.loadPerSide = false,
   });
 
   String get compactLabel {
     final setsText = configuredSets == null ? 'Sem meta' : '$configuredSets';
-    return '$setsText x $configuredRepetitions - ${formatKg(configuredWeightKg)}';
+    return '$setsText x $configuredRepetitions - '
+        '${formatKg(configuredWeightKg, perSide: loadPerSide)}';
   }
 }
 
@@ -43,10 +46,13 @@ ResolvedExerciseConfiguration resolveExerciseConfiguration({
     isComplete: machine?.currentSets != null &&
         machine?.currentRepetitions != null &&
         machine?.currentWeightKg != null,
+    loadPerSide: machine?.catalogLoadPerSide ?? false,
   );
 }
 
-String formatKg(num value) => '${formatCompactNumber(value)} kg';
+/// "15 kg", or "15 kg/lado" when the load is entered per side.
+String formatKg(num value, {bool perSide = false}) =>
+    '${formatCompactNumber(value)} kg${perSide ? '/lado' : ''}';
 
 String formatCompactNumber(num value) {
   final asDouble = value.toDouble();

@@ -119,3 +119,14 @@ test('overall metrics with Nova Era: old sessions become the starting point', ()
   assert.equal(empty.totais.sessoes, 0);
   assert.equal(empty.eraAnterior.pontoDePartida.length, 2);
 });
+
+test('per-side exercises are flagged in the outputs', () => {
+  const sessions = [session('2026-11-16T20:00', [ex('cross', [[10, 30]], { cargaPorLado: true }), ex('voador', [[10, 50]])])];
+  const range = m.weekRange(new Date(2026, 10, 22, 19));
+  const result = m.computePeriodMetrics({ sessions, events: [], range, previousRange: range });
+  const cross = result.exercicios.find((e) => e.nome === 'cross');
+  const voador = result.exercicios.find((e) => e.nome === 'voador');
+  assert.equal(cross.cargaPorLado, true);
+  assert.equal(cross.cargaMaximaKg, 30);
+  assert.equal('cargaPorLado' in voador, false);
+});

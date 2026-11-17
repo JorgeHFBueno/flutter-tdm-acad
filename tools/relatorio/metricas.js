@@ -96,12 +96,14 @@ function summarizeExerciseHistory(sessions) {
           key,
           name: exercise.exerciseName,
           category: exercise.category || null,
+          cargaPorLado: false,
           entries: [],
         });
       }
       const item = byExercise.get(key);
       item.name = exercise.exerciseName || item.name;
       item.category = exercise.category || item.category;
+      item.cargaPorLado = item.cargaPorLado || exercise.cargaPorLado === true;
       item.entries.push({
         date: session.date,
         maxWeightKg: Math.max(...sets.map((s) => s.weightKg)),
@@ -198,6 +200,7 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
     exercicios.push({
       nome: item.name,
       categoria: item.category,
+      ...(item.cargaPorLado && { cargaPorLado: true }),
       sessoes: inPeriod.length,
       series: inPeriod.reduce((sum, e) => sum + e.sets, 0),
       volumeKg: round(inPeriod.reduce((sum, e) => sum + e.volume, 0)),
@@ -267,6 +270,7 @@ function previousEra(sessions, since) {
     pontoDePartida.push({
       nome: item.name,
       categoria: item.category,
+      ...(item.cargaPorLado && { cargaPorLado: true }),
       sessoes: item.entries.length,
       ultimaData: dateKey(last.date),
       cargaKg: last.maxWeightKg,
@@ -321,6 +325,7 @@ function computeOverallMetrics({ sessions, events = [], until, since = null }) {
     exercicios.push({
       nome: item.name,
       categoria: item.category,
+      ...(item.cargaPorLado && { cargaPorLado: true }),
       sessoes: item.entries.length,
       primeiraData: dateKey(firstEntry.date),
       ultimaData: dateKey(lastEntry.date),

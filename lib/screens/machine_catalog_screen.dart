@@ -328,7 +328,8 @@ class _CatalogCard extends StatelessWidget {
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(item.scientificName),
           Text(
-              '${MachineCatalogCategory.label(item.category)} · ${MachineCatalogType.label(item.catalog.type)}'),
+              '${MachineCatalogCategory.label(item.category)} · ${MachineCatalogType.label(item.catalog.type)}'
+              '${item.catalog.loadPerSide ? ' · carga por lado' : ''}'),
           Text([
             if (item.catalog.isPendingReview) 'PENDENTE',
             if (item.catalog.isRetired) 'APOSENTADA',
@@ -373,6 +374,7 @@ class _CatalogEditorState extends State<_CatalogEditor> {
   late final TextEditingController _scientific;
   late String _category;
   late String _type;
+  late bool _loadPerSide;
   bool _saving = false;
 
   @override
@@ -382,6 +384,7 @@ class _CatalogEditorState extends State<_CatalogEditor> {
     _scientific = TextEditingController(text: widget.item?.scientificName);
     _category = widget.item?.category ?? MachineCatalogCategory.outros;
     _type = widget.item?.type ?? MachineCatalogType.outro;
+    _loadPerSide = widget.item?.loadPerSide ?? false;
   }
 
   @override
@@ -430,6 +433,14 @@ class _CatalogEditorState extends State<_CatalogEditor> {
               ],
               onChanged: (value) => _type = value!,
             ),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Carga por lado'),
+              subtitle: const Text(
+                  'Cada lado/halter tem a sua carga (o total é o dobro)'),
+              value: _loadPerSide,
+              onChanged: (value) => setState(() => _loadPerSide = value),
+            ),
           ])),
         ),
         actions: [
@@ -459,7 +470,8 @@ class _CatalogEditorState extends State<_CatalogEditor> {
             popularName: _popular.text,
             scientificName: _scientific.text,
             category: _category,
-            type: _type);
+            type: _type,
+            loadPerSide: _loadPerSide);
       } else {
         await widget.service.edit(
             id: item.id,
@@ -467,7 +479,8 @@ class _CatalogEditorState extends State<_CatalogEditor> {
             popularName: _popular.text,
             scientificName: _scientific.text,
             category: _category,
-            type: _type);
+            type: _type,
+            loadPerSide: _loadPerSide);
       }
       if (mounted) Navigator.pop(context);
     } catch (error) {

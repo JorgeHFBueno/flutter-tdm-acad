@@ -23,6 +23,9 @@ class MachineCatalogItem {
   final String origin;
   final bool scientificNamePending;
 
+  /// Load is entered per side (each cable stack, dumbbell or bar side).
+  final bool loadPerSide;
+
   const MachineCatalogItem({
     required this.id,
     required this.popularName,
@@ -39,6 +42,7 @@ class MachineCatalogItem {
     this.schemaVersion = machineCatalogSchemaVersion,
     this.origin = machineCatalogOriginManual,
     this.scientificNamePending = false,
+    this.loadPerSide = false,
   });
 
   factory MachineCatalogItem.fromMap(
@@ -61,6 +65,7 @@ class MachineCatalogItem {
       schemaVersion: _int(map['schema_version'], 1),
       origin: _string(map['origem']),
       scientificNamePending: _bool(map['nome_cientifico_pendente']),
+      loadPerSide: _bool(map['carga_por_lado']),
     );
   }
 
@@ -79,6 +84,7 @@ class MachineCatalogItem {
         'schema_version': schemaVersion,
         'origem': origin,
         'nome_cientifico_pendente': scientificNamePending,
+        'carga_por_lado': loadPerSide,
       };
 
   /// Created mid-workout and not yet reviewed in the full catalog editor.

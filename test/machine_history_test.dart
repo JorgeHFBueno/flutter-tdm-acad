@@ -1,4 +1,6 @@
 import 'package:firebased/data/exercise_catalog.dart';
+import 'package:firebased/models/machine_catalog_item.dart';
+import 'package:firebased/models/machine_catalog_view.dart';
 import 'package:firebased/models/machine_configuration.dart';
 import 'package:firebased/models/machine_event.dart';
 import 'package:firebased/models/machine_history.dart';
@@ -64,7 +66,7 @@ void main() {
         'currentWeightKg': 25.5,
       });
 
-      expect(profile.category, armExerciseCategory);
+      expect(profile.category, MachineCatalogCategory.triceps);
       expect(profile.completionCount, 7);
       expect(profile.observation, 'Corda curta');
       expect(profile.currentWeightKg, 25.5);
@@ -930,6 +932,41 @@ void main() {
         ).currentRepetitions,
         15,
       );
+    });
+  });
+
+  group('Etapa 9', () {
+    MachineProfile machine(String id, String name, String category) =>
+        MachineProfile(
+          exerciseId: id,
+          exerciseName: name,
+          category: category,
+          ownerUid: 'u',
+        );
+
+    test('groups machines by catalog category, then by name', () {
+      final groups = groupMachinesByCategory([
+        machine('a', 'Voador', 'peito'),
+        machine('b', 'Remada baixa', 'costas'),
+        machine('c', 'Cross Alto', 'peito'),
+        machine('d', 'Elevação lateral', 'Peito'),
+        machine('elevacao_lateral_x', 'Elevação lateral com halteres', 'X'),
+      ]);
+      expect(groups.map((g) => g.key), ['peito', 'costas', 'ombros']);
+      expect(groups.first.value.map((m) => m.exerciseName),
+          ['Cross Alto', 'Elevação lateral', 'Voador']);
+    });
+
+    test('per-side load doubles volume and is labelled', () {
+      final execution = ExerciseExecution(
+        exerciseName: 'Cross Alto',
+        loadPerSide: true,
+        sets: [ExerciseSet(setNumber: 1, reps: 10, weightKg: 15)],
+      );
+      expect(execution.volume, 300);
+      expect(ExerciseExecution.fromMap(execution.toMap()).loadPerSide, isTrue);
+      expect(formatKg(15, perSide: true), '15 kg/lado');
+      expect(formatKg(15), '15 kg');
     });
   });
 }

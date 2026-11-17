@@ -353,6 +353,8 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                         _warmupExecution = _warmupExecution.copyWith(
                           targetExerciseId: targetEntry?.machine.exerciseId,
                           targetExerciseName: value,
+                          loadPerSide:
+                              targetEntry?.machine.catalogLoadPerSide ?? false,
                         );
                       });
                       _scheduleAutosave();
@@ -361,9 +363,12 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
             const SizedBox(height: 8),
             _buildSetsSummary(
               _warmupExecution.sets,
+              perSide: _warmupExecution.loadPerSide,
             ),
             _buildObservationText(_warmupExecution.targetExerciseId),
-            Text('Volume: ${_warmupExecution.volume} kg reps'),
+            Text(
+              'Volume: ${formatCompactNumber(_warmupExecution.volume)} kg reps',
+            ),
             Align(
               alignment: Alignment.centerRight,
               child: Wrap(
@@ -376,6 +381,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                         : () => _openAddSetDialog(
                               title: 'Adicionar serie - Aquecimento',
                               initialWeightKg: targetWeight,
+                              perSide: _warmupExecution.loadPerSide,
                               defaultRepetitions: 10,
                               currentSets: _warmupExecution.sets,
                               onAdd: (sets) {
@@ -533,7 +539,10 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                   ],
                 ),
               ],
-              _buildSetsSummary(execution.sets),
+              _buildSetsSummary(
+                execution.sets,
+                perSide: execution.loadPerSide,
+              ),
               if (execution.perceivedEffort != null)
                 Text(
                     'Percepcao: ${PerceivedEffort.labelFor(execution.perceivedEffort)}'),
@@ -588,6 +597,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
               : () => _openAddSetDialog(
                     title: 'Adicionar serie - ${entry.machine.exerciseName}',
                     initialWeightKg: config.configuredWeightKg,
+                    perSide: execution.loadPerSide,
                     defaultRepetitions: config.configuredRepetitions,
                     currentSets: execution.sets,
                     onAdd: (updatedSets) {
@@ -639,8 +649,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
   }
 
   Widget _buildSetsSummary(
-    List<ExerciseSet> sets,
-  ) {
+    List<ExerciseSet> sets, {
+    bool perSide = false,
+  }) {
     if (sets.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -649,7 +660,8 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
       children: [
         for (final set in sets)
           Text(
-            'Serie ${set.setNumber}: ${set.reps} reps, ${formatKg(set.weightKg)}',
+            'Serie ${set.setNumber}: ${set.reps} reps, '
+            '${formatKg(set.weightKg, perSide: perSide)}',
           ),
       ],
     );
@@ -838,6 +850,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     required int defaultRepetitions,
     required List<ExerciseSet> currentSets,
     required ValueChanged<List<ExerciseSet>> onAdd,
+    bool perSide = false,
   }) async {
     final lastSet = currentSets.isNotEmpty ? currentSets.last : null;
     var reps = lastSet?.reps ?? defaultRepetitions;
@@ -872,7 +885,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 children: [
                   _SetStepper(
                     label: 'Peso',
-                    value: '${formatCompactNumber(weightKg)} kg',
+                    value: formatKg(weightKg, perSide: perSide),
                     decrementTooltip: 'Diminuir peso',
                     incrementTooltip: 'Aumentar peso',
                     onDecrement: weightKg <= 0 ? null : () => updateWeight(-1),

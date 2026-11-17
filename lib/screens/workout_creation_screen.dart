@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/machine_configuration.dart';
 import '../models/machine_history.dart';
+import '../models/machine_catalog_item.dart';
 import '../models/machine_catalog_view.dart';
 import '../models/workout.dart';
 import '../services/machine_history_service.dart';
@@ -207,14 +208,19 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
           Expanded(
             child: ListView(
               children: [
-                for (final machine in _machines)
-                  CheckboxListTile(
-                    value: _selectedMachineIds.contains(machine.exerciseId),
-                    title: Text(machine.exerciseName),
-                    subtitle: _MachineSubtitle(machine: machine),
-                    onChanged: (checked) =>
-                        _toggleMachine(machine.exerciseId, checked == true),
+                for (final group in groupMachinesByCategory(_machines)) ...[
+                  _CategoryHeader(
+                    label: MachineCatalogCategory.display(group.key),
                   ),
+                  for (final machine in group.value)
+                    CheckboxListTile(
+                      value: _selectedMachineIds.contains(machine.exerciseId),
+                      title: Text(machine.exerciseName),
+                      subtitle: _MachineSubtitle(machine: machine),
+                      onChanged: (checked) =>
+                          _toggleMachine(machine.exerciseId, checked == true),
+                    ),
+                ],
                 if (_selectedMachineIds.isNotEmpty) ...[
                   const Divider(),
                   const Text(
@@ -285,9 +291,31 @@ class _MachineSubtitle extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('${machine.category} - ${config.compactLabel}'),
+        Text(config.compactLabel),
         if (observation.isNotEmpty) Text('OBS: $observation'),
       ],
+    );
+  }
+}
+
+class _CategoryHeader extends StatelessWidget {
+  const _CategoryHeader({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Text(
+        label.toUpperCase(),
+        style: theme.textTheme.titleSmall?.copyWith(
+          color: theme.colorScheme.primary,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
     );
   }
 }

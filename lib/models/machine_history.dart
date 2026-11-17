@@ -2,6 +2,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../data/exercise_catalog.dart';
+import '../data/machine_catalog_seed.dart';
 
 class MachineIncreaseType {
   static const weight = 'weight';
@@ -80,6 +81,7 @@ class MachineProfile {
   final String ownerUid;
   final String? catalogScientificName;
   final String? catalogType;
+  final bool catalogLoadPerSide;
   final String? observation;
   final int completionCount;
   final MachineIncrease? lastIncrease;
@@ -102,6 +104,7 @@ class MachineProfile {
     required this.ownerUid,
     this.catalogScientificName,
     this.catalogType,
+    this.catalogLoadPerSide = false,
     this.observation,
     this.completionCount = 0,
     this.lastIncrease,
@@ -126,6 +129,7 @@ class MachineProfile {
     String? ownerUid,
     Object? catalogScientificName = _notProvided,
     Object? catalogType = _notProvided,
+    bool? catalogLoadPerSide,
     Object? observation = _notProvided,
     int? completionCount,
     MachineIncrease? lastIncrease,
@@ -154,6 +158,7 @@ class MachineProfile {
       catalogType: catalogType == _notProvided
           ? this.catalogType
           : catalogType as String?,
+      catalogLoadPerSide: catalogLoadPerSide ?? this.catalogLoadPerSide,
       observation: observation == _notProvided
           ? this.observation
           : observation as String?,
@@ -225,7 +230,10 @@ class MachineProfile {
     return MachineProfile(
       exerciseId: exerciseId,
       exerciseName: exerciseName,
-      category: catalogItem?.category ?? map['category']?.toString() ?? '',
+      category: machineCategoryKey(
+        catalogItem?.category ?? map['category']?.toString() ?? '',
+        exerciseId,
+      ),
       ownerUid: map['ownerUid']?.toString() ?? '',
       completionCount: readMachineInt(map['completionCount']),
       observation: map.containsKey('observation')

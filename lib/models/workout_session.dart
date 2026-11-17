@@ -165,6 +165,9 @@ class ExerciseExecution {
   final String? scientificName;
   final String? category;
   final String? type;
+
+  /// Weights in [sets] are per side; volume counts both sides.
+  final bool loadPerSide;
   final List<ExerciseSet> sets;
   final String? perceivedEffort;
   final bool completed;
@@ -183,6 +186,7 @@ class ExerciseExecution {
     this.scientificName,
     this.category,
     this.type,
+    this.loadPerSide = false,
     required this.sets,
     this.perceivedEffort,
     this.completed = false,
@@ -205,6 +209,7 @@ class ExerciseExecution {
     Object? scientificName = _notProvided,
     Object? category = _notProvided,
     Object? type = _notProvided,
+    bool? loadPerSide,
     List<ExerciseSet>? sets,
     String? perceivedEffort,
     bool? completed,
@@ -225,6 +230,7 @@ class ExerciseExecution {
           : scientificName as String?,
       category: category == _notProvided ? this.category : category as String?,
       type: type == _notProvided ? this.type : type as String?,
+      loadPerSide: loadPerSide ?? this.loadPerSide,
       sets: sets ?? this.sets,
       perceivedEffort: perceivedEffort ?? this.perceivedEffort,
       completed: completed ?? this.completed,
@@ -253,6 +259,7 @@ class ExerciseExecution {
         if (scientificName != null) 'scientificName': scientificName,
         if (category != null) 'category': category,
         if (type != null) 'type': type,
+        if (loadPerSide) 'loadPerSide': true,
         'sets': sets.map((s) => s.toMap()).toList(),
         'perceivedEffort': perceivedEffort,
         'completed': completed,
@@ -292,6 +299,7 @@ class ExerciseExecution {
       scientificName: _readOptionalString(map['scientificName']),
       category: _readOptionalString(map['category']),
       type: _readOptionalString(map['type']),
+      loadPerSide: _readBool(map['loadPerSide']),
       sets: setsList
           .map((s) => ExerciseSet.fromMap(Map<String, dynamic>.from(s)))
           .toList(),
@@ -310,7 +318,7 @@ class ExerciseExecution {
     );
   }
 
-  double get volume => calculateSetsVolume(sets);
+  double get volume => calculateSetsVolume(sets) * (loadPerSide ? 2 : 1);
 
   bool get hasRegisteredWork => sets.isNotEmpty;
 

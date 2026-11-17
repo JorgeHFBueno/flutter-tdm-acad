@@ -92,3 +92,8 @@ rápida com `origem = criacao_rapida`) e o aquecimento pode ser pulado
 (`status = skipped`). A ficha não é alterada. Detalhes em
 `ETAPA_7_TREINO_LIVRE.md`.
 
+# Atualização — Etapa 9 (carga por lado)
+
+`machine_catalog.carga_por_lado` marca exercícios lançados por lado; o snapshot
+da sessão grava `loadPerSide` e o volume conta os dois lados. Criar/editar
+treino agrupa as máquinas por categoria. Ver `ETAPA_9_CARGA_POR_LADO.md`.

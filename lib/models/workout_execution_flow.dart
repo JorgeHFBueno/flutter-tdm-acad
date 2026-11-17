@@ -94,6 +94,7 @@ SessionExerciseEntry _pendingEntry(int originalIndex, MachineProfile machine) {
       scientificName: machine.catalogScientificName,
       category: machine.category,
       type: machine.catalogType,
+      loadPerSide: machine.catalogLoadPerSide,
       sets: const [],
       configuredSets: machine.currentSets,
       configuredRepetitions: machine.currentRepetitions,
