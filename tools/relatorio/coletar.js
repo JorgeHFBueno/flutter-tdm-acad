@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Prints the metrics JSON for the reports due on a given date.
 // Usage: node coletar.js [--data AAAA-MM-DD] [--forcar-mensal]
+//   Without --data the reference is the most recent Sunday (today if Sunday).
 //   Always includes "semanal". On the first Sunday of the month (or with
 //   --forcar-mensal) also includes "mensal" (previous month) and "geral".
 
@@ -16,6 +17,12 @@ function parseArgs(argv) {
   return args;
 }
 
+// The scheduled run may start late (app closed on Sunday): report the week
+// that ended on the most recent Sunday, never the one just starting.
+function lastSunday(now) {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 19);
+}
+
 function fmt(key) {
   const [y, mo, d] = key.split('-');
   return `${d}/${mo}/${y}`;
@@ -23,7 +30,7 @@ function fmt(key) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  const ref = args.data ? new Date(`${args.data}T19:00:00`) : new Date();
+  const ref = args.data ? new Date(`${args.data}T19:00:00`) : lastSunday(new Date());
   const { db, uid } = init();
   const [sessions, events, eraStart] = await Promise.all([
     loadSessions(db, uid),

@@ -58,10 +58,11 @@
 - Continua abrindo sessoes antigas por snapshot.
 - Nao depende do documento atual do treino.
 
-## Gemini
+## Analises
 
-- Servicos e telas de analise permanecem separados do dominio Maquina/Treino/Sessao.
-- Configuracao e chaves nao foram alteradas.
+- Gemini removido na Etapa 8. As analises semanal, mensal e geral sao geradas
+  por `tools/relatorio` (tarefa agendada do Claude) e gravadas em
+  `workout_analysis_logs`; o app so lista e mostra. Ver `ETAPA_8_RELATORIOS.md`.
 
 ## Fluxos
 

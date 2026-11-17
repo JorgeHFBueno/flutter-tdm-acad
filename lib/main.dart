@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app/appearance/app_appearance_controller.dart';
@@ -7,10 +6,8 @@ import 'app/appearance/app_appearance_scope.dart';
 import 'app/appearance/app_theme_factory.dart';
 import 'firebase_options.dart';
 import 'screens/auth.dart';
-import 'package:flutter_gemini/flutter_gemini.dart';
 import 'screens/workout_creation_screen.dart';
 import 'menu2.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,31 +17,14 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 2) Gemini so no app nativo: na web o .env nao e publicado
-  //    (firebase.json ignora arquivos ".*") e a analise por IA fica oculta.
-  if (!kIsWeb) {
-    await dotenv.load(fileName: ".env");
-    final geminiApiKey = dotenv.env['GEMINI_API_KEY'];
+  // 2) Push: registrado depois do login (menu2), sem await aqui.
+  //    Análises vêm da tarefa agendada (tools/relatorio), não mais do Gemini.
 
-    if (geminiApiKey == null || geminiApiKey.isEmpty) {
-      // Se não achar a chave, loga no console pra você ver
-      debugPrint('GEMINI_API_KEY não encontrada no .env');
-    } else {
-      Gemini.init(
-        apiKey: geminiApiKey,
-        enableDebugging: true,
-      );
-    }
-  }
-
-  // 4) Push notifications
-  // await _setupPushNotifications();
-
-  // 5) Carrega preferencias visuais locais
+  // 3) Carrega preferencias visuais locais
   final appearanceController = AppAppearanceController();
   await appearanceController.load();
 
-  // 6) Sobe o app
+  // 4) Sobe o app
   runApp(MyApp(appearanceController: appearanceController));
 }
 

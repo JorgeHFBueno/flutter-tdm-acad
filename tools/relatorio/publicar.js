@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Saves a written analysis to workout_analysis_logs and sends the push.
 // Usage: node publicar.js --tipo semanal|mensal|geral --titulo "..." \
-//          --periodo "semanal (09/11 a 15/11)" --arquivo analise.md [--sem-push]
+//          --periodo "semanal (09/11 a 15/11)" --arquivo analise.md [--sem-push] [--forcar]
+//   Skips if a log with the same type and title exists (use --forcar to repeat).
 
 const fs = require('node:fs');
 const { init, admin } = require('./firestore');
@@ -13,6 +14,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const flag = argv[i];
     if (flag === '--sem-push') args.push = false;
+    else if (flag === '--forcar') args.forcar = true;
     else if (flag.startsWith('--')) args[flag.slice(2)] = argv[++i];
   }
   return args;
@@ -51,7 +53,18 @@ async function main() {
   if (!response) throw new Error('Arquivo de análise vazio');
 
   const { db, messaging, uid } = init();
-  const ref = await db.collection('workout_analysis_logs').add({
+  const logs = db.collection('workout_analysis_logs');
+  const existing = await logs
+    .where('ownerUid', '==', uid)
+    .where('type', '==', args.tipo)
+    .where('workoutName', '==', args.titulo)
+    .limit(1)
+    .get();
+  if (!existing.empty && !args.forcar) {
+    console.log(JSON.stringify({ skipped: 'já publicado', logId: existing.docs[0].id }));
+    return;
+  }
+  const ref = await logs.add({
     ownerUid: uid,
     workoutId: null,
     workoutName: args.titulo,

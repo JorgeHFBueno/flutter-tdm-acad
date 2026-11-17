@@ -1,12 +1,7 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/machine_configuration.dart';
 import '../models/workout_session.dart';
-import '../services/workout_analysis_service.dart';
-import '../models/workout_analysis_log.dart';
-import '../services/workout_analysis_log_service.dart';
 
 class WorkoutSessionDetailScreen extends StatefulWidget {
   const WorkoutSessionDetailScreen({super.key, required this.session});
@@ -20,9 +15,6 @@ class WorkoutSessionDetailScreen extends StatefulWidget {
 
 class _WorkoutSessionDetailScreenState
     extends State<WorkoutSessionDetailScreen> {
-  final WorkoutAnalysisService _analysisService = WorkoutAnalysisService();
-  final WorkoutAnalysisLogService _analysisLogService =
-      WorkoutAnalysisLogService();
 
   @override
   Widget build(BuildContext context) {
@@ -68,16 +60,6 @@ class _WorkoutSessionDetailScreenState
               ),
               const SizedBox(height: 8),
               ...session.exercises.map(_buildExerciseCard),
-              const SizedBox(height: 16),
-              if (!kIsWeb)
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.auto_awesome),
-                    label: const Text('Analisar este treino (IA)'),
-                    onPressed: _analyzeCurrentSession,
-                  ),
-                )
             ],
           ),
         ),
@@ -187,128 +169,5 @@ class _WorkoutSessionDetailScreenState
         ? 'sem peso'
         : formatKg(exercise.configuredWeightKg!);
     return '$sets x $reps - $weight';
-  }
-
-  Future<void> _analyzeCurrentSession() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Usuário não autenticado.')),
-        );
-      }
-      return;
-    }
-    _showLoadingDialog();
-    try {
-      final prompt = _buildSessionPrompt(widget.session);
-      final response = await _analysisService.analyzeText(prompt);
-
-      await _saveAnalysisLog(
-        userUid: user.uid,
-        prompt: prompt,
-        response: response,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      await _showAnalysisResult(response);
-    } catch (e) {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Erro ao analisar treino: $e')),
-      );
-    }
-  }
-
-  Future<void> _saveAnalysisLog({
-    required String userUid,
-    required String prompt,
-    required String response,
-  }) async {
-    final log = WorkoutAnalysisLog(
-      id: '',
-      ownerUid: userUid,
-      workoutId: widget.session.workoutId,
-      workoutName: widget.session.workoutName,
-      type: 'session',
-      prompt: prompt,
-      response: response,
-      createdAt: DateTime.now(),
-    );
-
-    try {
-      await _analysisLogService.saveLog(log);
-    } catch (e) {
-      debugPrint('Erro ao salvar histórico de análise de sessão: $e');
-    }
-  }
-
-  String _buildSessionPrompt(WorkoutSession session) {
-    final buffer = StringBuffer()
-      ..writeln(
-          'Você é um treinador de musculação. Analise APENAS este treino realizado, considerando a ordem executada, aquecimento, exercício-alvo do aquecimento, carga (kg), séries, repetições, volume e percepção de esforço em português. Sugira ajustes práticos: trocar a ordem de equipamentos, aumentar ou diminuir peso ou número de séries, e comente se o treino parece adequado para objetivo de força/hipertrofia, levando em conta sinais de fadiga.')
-      ..writeln()
-      ..writeln('Treino: ${session.workoutName}')
-      ..writeln(
-          'Data: ${_formatDateTime(session.performedAt ?? session.endAt)}');
-
-    for (final exercise in session.exercises) {
-      if (exercise.isWarmup &&
-          exercise.status == ExerciseExecutionStatus.skipped) {
-        buffer.writeln('• Aquecimento não realizado');
-      } else if (exercise.isWarmup) {
-        buffer.writeln(
-            '• Aquecimento para ${exercise.targetExerciseName ?? 'exercício não informado'} (sem percepção, volume ${formatCompactNumber(exercise.volume)} kg reps)');
-      } else {
-        buffer.writeln(
-            '• ${exercise.exerciseName} (${PerceivedEffort.labelFor(exercise.perceivedEffort)}, volume ${formatCompactNumber(exercise.volume)} kg reps)');
-        if (_hasConfigurationSnapshot(exercise)) {
-          buffer.writeln(
-              '  - Configuração esperada: ${_formatConfigurationSnapshot(exercise)}');
-        }
-        if ((exercise.observationSnapshot ?? '').trim().isNotEmpty) {
-          buffer.writeln('  - OBS: ${exercise.observationSnapshot!.trim()}');
-        }
-        if (PerceivedEffort.isSkipped(exercise.perceivedEffort)) {
-          buffer.writeln('  - Exercício não realizado.');
-        }
-      }
-      for (final set in exercise.sets) {
-        buffer.writeln(
-            '  - Série ${set.setNumber}: ${set.reps} reps x ${formatKg(set.weightKg)}');
-      }
-    }
-
-    return buffer.toString();
-  }
-
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const AlertDialog(
-        content: SizedBox(
-          height: 80,
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showAnalysisResult(String response) {
-    return showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Análise do treino (IA)'),
-        content: SingleChildScrollView(child: Text(response)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Fechar'),
-          )
-        ],
-      ),
-    );
   }
 }

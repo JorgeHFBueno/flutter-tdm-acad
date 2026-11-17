@@ -78,9 +78,22 @@ recordes com todo o histórico.
 
 A conta de teste (login por senha) foi mantida.
 
-## Pendente
+## Tarefa agendada
 
-- Tarefa agendada no app do Claude (domingo 19h). Só roda com o app aberto;
-  se estiver fechado, roda ao abrir.
-- Remover o Gemini do app (pacote, `.env`, botões e serviço), mantendo o
-  histórico de análises.
+- Tarefa local do app do Claude `vanguard-analise-semanal`, cron `0 19 * * 0`
+  (domingo 19h). Prompt em
+  `C:\Users\Jorge\.claude\scheduled-tasks\vanguard-analise-semanal\SKILL.md`.
+- Só roda com o app do Claude aberto. Se estiver fechado, roda ao abrir; por
+  isso o `coletar.js` sem `--data` usa o domingo mais recente como referência.
+- `publicar.js` não publica de novo um log com o mesmo tipo e título (a não ser
+  com `--forcar`), então rodar duas vezes não duplica nem repete o push.
+
+## Gemini removido
+
+- Saíram `flutter_gemini`, `flutter_dotenv`, o asset `.env`, o
+  `WorkoutAnalysisService` e os botões "Analisar ... (IA)" do histórico e do
+  detalhe da sessão.
+- O histórico de análises (`workout_analysis_logs`) continua, agora alimentado
+  pela tarefa agendada.
+- APKs antigos levavam a chave do Gemini; ela pode ser revogada no Google AI
+  Studio.
