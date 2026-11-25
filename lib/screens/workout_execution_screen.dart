@@ -355,6 +355,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                           targetExerciseName: value,
                           loadPerSide:
                               targetEntry?.machine.catalogLoadPerSide ?? false,
+                          type: targetEntry?.machine.catalogType,
                         );
                       });
                       _scheduleAutosave();
@@ -364,6 +365,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
             _buildSetsSummary(
               _warmupExecution.sets,
               perSide: _warmupExecution.loadPerSide,
+              bodyweight: _warmupExecution.isBodyweight,
             ),
             _buildObservationText(_warmupExecution.targetExerciseId),
             Text(
@@ -382,6 +384,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                               title: 'Adicionar serie - Aquecimento',
                               initialWeightKg: targetWeight,
                               perSide: _warmupExecution.loadPerSide,
+                              bodyweight: _warmupExecution.isBodyweight,
                               defaultRepetitions: 10,
                               currentSets: _warmupExecution.sets,
                               onAdd: (sets) {
@@ -542,6 +545,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
               _buildSetsSummary(
                 execution.sets,
                 perSide: execution.loadPerSide,
+                bodyweight: execution.isBodyweight,
               ),
               if (execution.perceivedEffort != null)
                 Text(
@@ -598,6 +602,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                     title: 'Adicionar serie - ${entry.machine.exerciseName}',
                     initialWeightKg: config.configuredWeightKg,
                     perSide: execution.loadPerSide,
+                    bodyweight: execution.isBodyweight,
                     defaultRepetitions: config.configuredRepetitions,
                     currentSets: execution.sets,
                     onAdd: (updatedSets) {
@@ -651,6 +656,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
   Widget _buildSetsSummary(
     List<ExerciseSet> sets, {
     bool perSide = false,
+    bool bodyweight = false,
   }) {
     if (sets.isEmpty) {
       return const SizedBox.shrink();
@@ -661,7 +667,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
         for (final set in sets)
           Text(
             'Serie ${set.setNumber}: ${set.reps} reps, '
-            '${formatKg(set.weightKg, perSide: perSide)}',
+            '${formatSetLoad(set.weightKg, perSide: perSide, bodyweight: bodyweight)}',
           ),
       ],
     );
@@ -851,10 +857,11 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     required List<ExerciseSet> currentSets,
     required ValueChanged<List<ExerciseSet>> onAdd,
     bool perSide = false,
+    bool bodyweight = false,
   }) async {
     final lastSet = currentSets.isNotEmpty ? currentSets.last : null;
     var reps = lastSet?.reps ?? defaultRepetitions;
-    var weightKg = lastSet?.weightKg ?? initialWeightKg;
+    var weightKg = bodyweight ? 0.0 : lastSet?.weightKg ?? initialWeightKg;
     if (reps < 0) reps = 0;
     if (weightKg < 0) weightKg = 0;
     var isRegistering = false;
@@ -883,14 +890,18 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _SetStepper(
-                    label: 'Peso',
-                    value: formatKg(weightKg, perSide: perSide),
-                    decrementTooltip: 'Diminuir peso',
-                    incrementTooltip: 'Aumentar peso',
-                    onDecrement: weightKg <= 0 ? null : () => updateWeight(-1),
-                    onIncrement: () => updateWeight(1),
-                  ),
+                  if (bodyweight)
+                    const Text('Peso do corpo')
+                  else
+                    _SetStepper(
+                      label: 'Peso',
+                      value: formatKg(weightKg, perSide: perSide),
+                      decrementTooltip: 'Diminuir peso',
+                      incrementTooltip: 'Aumentar peso',
+                      onDecrement:
+                          weightKg <= 0 ? null : () => updateWeight(-1),
+                      onIncrement: () => updateWeight(1),
+                    ),
                   const SizedBox(height: 16),
                   _SetStepper(
                     label: 'Repeticoes',

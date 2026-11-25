@@ -43,25 +43,32 @@ const isWarmupName = (name) => /^aquecimento/i.test(name.trim());
 
 const nameKey = (name) => fixText(name).trim().toLowerCase();
 
-// Catalog items whose load is entered per side (carga_por_lado).
-let perSideIndex = null;
+// Catalog flags: load entered per side (carga_por_lado) and bodyweight only
+// (tipo peso_corporal). Matched by id or, for old sessions, by name.
+let catalogFlags = null;
 function loadPerSideIndex(db) {
-  if (!perSideIndex) {
-    perSideIndex = db.collection('machine_catalog').get().then((snapshot) => {
-      const ids = new Set();
-      const names = new Set();
+  if (!catalogFlags) {
+    catalogFlags = db.collection('machine_catalog').get().then((snapshot) => {
+      const flags = { ids: new Set(), names: new Set(), bodyIds: new Set(), bodyNames: new Set() };
       for (const doc of snapshot.docs) {
-        if (doc.get('carga_por_lado') !== true) continue;
-        ids.add(doc.id);
-        names.add(nameKey(doc.get('nome_popular')));
+        const name = nameKey(doc.get('nome_popular'));
+        if (doc.get('carga_por_lado') === true) {
+          flags.ids.add(doc.id);
+          flags.names.add(name);
+        }
+        if (doc.get('tipo') === 'peso_corporal') {
+          flags.bodyIds.add(doc.id);
+          flags.bodyNames.add(name);
+        }
       }
-      return { ids, names };
+      return flags;
     });
   }
-  return perSideIndex;
+  return catalogFlags;
 }
 
 const isPerSide = (index, id, name) => index.ids.has(id) || index.names.has(nameKey(name));
+const isBodyweight = (index, id, name) => index.bodyIds.has(id) || index.bodyNames.has(nameKey(name));
 
 // Per-side weights become totals (x2) so volume and loads are comparable.
 function mapSession(doc, perSide) {
@@ -86,6 +93,7 @@ function mapSession(doc, perSide) {
       status: e.status || (e.completed ? 'completed' : 'pending'),
       perceivedEffort: e.perceivedEffort || null,
       cargaPorLado,
+      pesoCorporal: e.type === 'peso_corporal' || isBodyweight(perSide, target, targetName || ''),
       sets: Array.isArray(e.sets)
         ? e.sets.map((s) => ({ reps: num(s.reps), weightKg: num(s.weightKg) * factor }))
         : [],

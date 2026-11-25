@@ -97,6 +97,7 @@ function summarizeExerciseHistory(sessions) {
           name: exercise.exerciseName,
           category: exercise.category || null,
           cargaPorLado: false,
+          pesoCorporal: false,
           entries: [],
         });
       }
@@ -104,6 +105,7 @@ function summarizeExerciseHistory(sessions) {
       item.name = exercise.exerciseName || item.name;
       item.category = exercise.category || item.category;
       item.cargaPorLado = item.cargaPorLado || exercise.cargaPorLado === true;
+      item.pesoCorporal = item.pesoCorporal || exercise.pesoCorporal === true;
       item.entries.push({
         date: session.date,
         maxWeightKg: Math.max(...sets.map((s) => s.weightKg)),
@@ -201,8 +203,10 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
       nome: item.name,
       categoria: item.category,
       ...(item.cargaPorLado && { cargaPorLado: true }),
+      ...(item.pesoCorporal && { pesoCorporal: true }),
       sessoes: inPeriod.length,
       series: inPeriod.reduce((sum, e) => sum + e.sets, 0),
+      repeticoes: inPeriod.reduce((sum, e) => sum + e.reps, 0),
       volumeKg: round(inPeriod.reduce((sum, e) => sum + e.volume, 0)),
       cargaMaximaKg: maxWeight,
       melhor1rmEstimadoKg: round(bestE1rm),
@@ -271,6 +275,7 @@ function previousEra(sessions, since) {
       nome: item.name,
       categoria: item.category,
       ...(item.cargaPorLado && { cargaPorLado: true }),
+      ...(item.pesoCorporal && { pesoCorporal: true }),
       sessoes: item.entries.length,
       ultimaData: dateKey(last.date),
       cargaKg: last.maxWeightKg,
@@ -326,6 +331,7 @@ function computeOverallMetrics({ sessions, events = [], until, since = null }) {
       nome: item.name,
       categoria: item.category,
       ...(item.cargaPorLado && { cargaPorLado: true }),
+      ...(item.pesoCorporal && { pesoCorporal: true }),
       sessoes: item.entries.length,
       primeiraData: dateKey(firstEntry.date),
       ultimaData: dateKey(lastEntry.date),

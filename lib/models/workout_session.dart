@@ -320,6 +320,8 @@ class ExerciseExecution {
 
   double get volume => calculateSetsVolume(sets) * (loadPerSide ? 2 : 1);
 
+  bool get isBodyweight => type == 'peso_corporal';
+
   bool get hasRegisteredWork => sets.isNotEmpty;
 
   bool get isGoalReached => isExerciseGoalReached(this);

@@ -123,7 +123,7 @@ class _WorkoutSessionDetailScreenState
                   padding: const EdgeInsets.symmetric(vertical: 2.0),
                   child: Text(
                     'Série ${set.setNumber}: ${set.reps} reps - '
-                    '${formatKg(set.weightKg, perSide: exercise.loadPerSide)}',
+                    '${formatSetLoad(set.weightKg, perSide: exercise.loadPerSide, bodyweight: exercise.isBodyweight)}',
                   ),
                 ),
               ),
@@ -167,10 +167,12 @@ class _WorkoutSessionDetailScreenState
         : '${exercise.configuredRepetitions}';
     final weight = exercise.configuredWeightKg == null
         ? 'sem peso'
-        : formatKg(
-            exercise.configuredWeightKg!,
-            perSide: exercise.loadPerSide,
-          );
+        : exercise.isBodyweight
+            ? bodyweightLabel
+            : formatKg(
+                exercise.configuredWeightKg!,
+                perSide: exercise.loadPerSide,
+              );
     return '$sets x $reps - $weight';
   }
 }

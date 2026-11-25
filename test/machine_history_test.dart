@@ -968,5 +968,21 @@ void main() {
       expect(formatKg(15, perSide: true), '15 kg/lado');
       expect(formatKg(15), '15 kg');
     });
+
+    test('bodyweight exercises show "peso do corpo"', () {
+      final execution = ExerciseExecution(
+        exerciseName: 'Barra Supino',
+        type: MachineCatalogType.pesoCorporal,
+        sets: [ExerciseSet(setNumber: 1, reps: 8, weightKg: 0)],
+      );
+      expect(execution.isBodyweight, isTrue);
+      expect(formatSetLoad(0, bodyweight: true), 'peso do corpo');
+      expect(formatSetLoad(5, bodyweight: true), '5 kg');
+      final config = resolveExerciseConfiguration(
+        machine: machine('barra', 'Barra Supino', 'costas')
+            .copyWith(catalogType: MachineCatalogType.pesoCorporal),
+      );
+      expect(config.compactLabel, endsWith('peso do corpo'));
+    });
   });
 }

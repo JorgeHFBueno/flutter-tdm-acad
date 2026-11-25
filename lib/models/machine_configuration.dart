@@ -1,3 +1,4 @@
+import 'machine_catalog_item.dart';
 import 'machine_history.dart';
 
 class ResolvedExerciseConfiguration {
@@ -8,6 +9,7 @@ class ResolvedExerciseConfiguration {
   final bool hasMachine;
   final bool isComplete;
   final bool loadPerSide;
+  final bool bodyweight;
 
   const ResolvedExerciseConfiguration({
     required this.configuredSets,
@@ -17,12 +19,13 @@ class ResolvedExerciseConfiguration {
     required this.hasMachine,
     required this.isComplete,
     this.loadPerSide = false,
+    this.bodyweight = false,
   });
 
   String get compactLabel {
     final setsText = configuredSets == null ? 'Sem meta' : '$configuredSets';
     return '$setsText x $configuredRepetitions - '
-        '${formatKg(configuredWeightKg, perSide: loadPerSide)}';
+        '${bodyweight ? bodyweightLabel : formatKg(configuredWeightKg, perSide: loadPerSide)}';
   }
 }
 
@@ -47,8 +50,21 @@ ResolvedExerciseConfiguration resolveExerciseConfiguration({
         machine?.currentRepetitions != null &&
         machine?.currentWeightKg != null,
     loadPerSide: machine?.catalogLoadPerSide ?? false,
+    bodyweight: isBodyweightType(machine?.catalogType),
   );
 }
+
+const bodyweightLabel = 'peso do corpo';
+
+/// Bodyweight exercises (catalog type peso_corporal) record reps only.
+bool isBodyweightType(String? type) => type == MachineCatalogType.pesoCorporal;
+
+/// "peso do corpo" for bodyweight sets without extra load, else [formatKg].
+String formatSetLoad(num value,
+        {bool perSide = false, bool bodyweight = false}) =>
+    bodyweight && value <= 0
+        ? bodyweightLabel
+        : formatKg(value, perSide: perSide);
 
 /// "15 kg", or "15 kg/lado" when the load is entered per side.
 String formatKg(num value, {bool perSide = false}) =>

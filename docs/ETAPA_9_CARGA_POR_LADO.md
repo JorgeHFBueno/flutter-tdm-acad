@@ -37,3 +37,30 @@ Backup: `~/.vanguard/backup-2026-11-17T19-10-40-331Z.json`.
 - Sessão de 16/11 ("Peito NE"): aquecimento marcado como feito (1 série de 12
   com 10 kg por lado no Supino Simples) e categorias "Peito" → `peito`.
 - Máquinas Supino Simples e Supino inclinado com halteres: categoria `peito`.
+
+## Peso do corpo (25/11/2026)
+
+- Exercícios do catálogo com tipo `peso_corporal` não pedem peso: o diálogo de
+  série mostra "Peso do corpo" e grava 0 kg. Séries antigas com carga continuam
+  mostrando o kg.
+- Relatórios marcam `pesoCorporal: true` e trazem `repeticoes` por exercício.
+- Marcados: Barra Supino (barra fixa), Abdominal inclinado, "ABS Perna" e
+  "ABS Invertido".
+
+## Fluxo de revisão depois de cada treino
+
+1. `node tools/relatorio/revisar.js [n]` lista os últimos treinos e o que está
+   pendente (nome científico, categoria, aquecimento, exercício sem séries).
+2. Definimos os nomes e tipos e escrevemos um plano JSON (formato no topo de
+   `corrigir.js`).
+3. `node tools/relatorio/corrigir.js plano.json [--detalhe]` simula;
+   `--aplicar` grava, com backup em `~/.vanguard/`. Ele atualiza o catálogo e
+   alinha máquinas e todo o histórico (nome, categoria, tipo, carga por lado),
+   para a análise não dividir o mesmo exercício em dois.
+
+Aplicado em 25/11/2026 (backup `backup-2026-11-25T13-28-14-995Z.json`):
+Barra Supino = barra fixa; Remada Baixa Curvada = remada curvada com barra
+(por lado); Biceps Corda = rosca martelo na polia baixa com corda; "Tríceps
+corda costas" = extensão de tríceps acima da cabeça na polia com corda; Barra W
+por lado; "tríceps banco costas" = bíceps com halteres por lado (nome
+pendente); aquecimento de 17/11 marcado como feito.
