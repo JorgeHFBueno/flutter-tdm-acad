@@ -43,18 +43,20 @@ const isWarmupName = (name) => /^aquecimento/i.test(name.trim());
 
 const nameKey = (name) => fixText(name).trim().toLowerCase();
 
-// Catalog flags: load entered per side (carga_por_lado) and bodyweight only
-// (tipo peso_corporal). Matched by id or, for old sessions, by name.
+// Catalog flags: load entered per side (carga_por_lado, optionally only from
+// the date carga_por_lado_desde on) and bodyweight only (tipo peso_corporal).
+// Matched by id or, for old sessions, by name.
 let catalogFlags = null;
 function loadPerSideIndex(db) {
   if (!catalogFlags) {
     catalogFlags = db.collection('machine_catalog').get().then((snapshot) => {
-      const flags = { ids: new Set(), names: new Set(), bodyIds: new Set(), bodyNames: new Set() };
+      const flags = { ids: new Map(), names: new Map(), bodyIds: new Set(), bodyNames: new Set() };
       for (const doc of snapshot.docs) {
         const name = nameKey(doc.get('nome_popular'));
         if (doc.get('carga_por_lado') === true) {
-          flags.ids.add(doc.id);
-          flags.names.add(name);
+          const since = perSideSince(doc.get('carga_por_lado_desde'));
+          flags.ids.set(doc.id, since);
+          flags.names.set(name, since);
         }
         if (doc.get('tipo') === 'peso_corporal') {
           flags.bodyIds.add(doc.id);
@@ -67,23 +69,36 @@ function loadPerSideIndex(db) {
   return catalogFlags;
 }
 
-const isPerSide = (index, id, name) => index.ids.has(id) || index.names.has(nameKey(name));
+/** "2026-11-25" -> local midnight of that day, or null when not set. */
+function perSideSince(value) {
+  return typeof value === 'string' && value ? new Date(`${value}T00:00:00`) : null;
+}
+
+/** Per side for this exercise at [date] (no date = per side whenever flagged). */
+function isPerSide(index, id, name, date) {
+  const key = nameKey(name);
+  if (!index.ids.has(id) && !index.names.has(key)) return false;
+  const since = index.ids.has(id) ? index.ids.get(id) : index.names.get(key);
+  return !since || !date || date >= since;
+}
 const isBodyweight = (index, id, name) => index.bodyIds.has(id) || index.bodyNames.has(nameKey(name));
 
 // Per-side weights become totals (x2) so volume and loads are comparable.
 function mapSession(doc, perSide) {
   const d = doc.data();
+  const date = toDate(d.performedAt) || toDate(d.completedAt) || toDate(d.endAt);
+  const startAt = toDate(d.startAt);
   return {
     id: doc.id,
     workoutName: d.workoutName || '',
     status: d.status || '',
-    date: toDate(d.performedAt) || toDate(d.completedAt) || toDate(d.endAt),
-    startAt: toDate(d.startAt),
+    date,
+    startAt,
     endAt: toDate(d.endAt),
     exercises: (d.exercises || []).map((e) => {
       const target = e.isWarmup ? e.targetExerciseId : e.exerciseId;
       const targetName = e.isWarmup ? e.targetExerciseName : e.exerciseName;
-      const cargaPorLado = e.loadPerSide === true || isPerSide(perSide, target, targetName || '');
+      const cargaPorLado = e.loadPerSide === true || isPerSide(perSide, target, targetName || '', startAt || date);
       const factor = cargaPorLado ? 2 : 1;
       return {
       exerciseId: e.exerciseId || null,
@@ -118,10 +133,11 @@ async function loadEvents(db, uid) {
   const events = [];
   for (const machine of machines.docs) {
     const name = fixText(machine.data().exerciseName) || machine.id;
-    const factor = isPerSide(perSide, machine.id, name) ? 2 : 1;
     const snapshot = await machine.ref.collection('events').get();
     for (const doc of snapshot.docs) {
       const e = doc.data();
+      const when = toDate(e.occurredAt) || toDate(e.createdAt);
+      const factor = isPerSide(perSide, machine.id, name, when) ? 2 : 1;
       const scale = (value) =>
         e.type === 'weight_increased' && typeof value === 'number' ? value * factor : value ?? null;
       events.push({
@@ -130,7 +146,7 @@ async function loadEvents(db, uid) {
         type: e.type,
         previousValue: scale(e.previousValue),
         newValue: scale(e.newValue),
-        occurredAt: toDate(e.occurredAt) || toDate(e.createdAt),
+        occurredAt: when,
         voided: Boolean(e.voidedAt) || e.isDeleted === true,
       });
     }

@@ -15,7 +15,9 @@ catálogo local antigo (`Peito`), via `machineCategoryKey`. Era isso que gravava
 
 ## Carga por lado
 
-- Campo `machine_catalog/{id}.carga_por_lado` (bool). No web, a chave
+- Campo `machine_catalog/{id}.carga_por_lado` (bool). Opcional
+  `carga_por_lado_desde` ("AAAA-MM-DD"): sessões e aumentos anteriores
+  continuam lidos como total (relatórios e `corrigir.js`). No web, a chave
   "Carga por lado" fica no formulário do catálogo.
 - Você continua digitando o que vê (15 = cada polia, cada halter ou cada lado
   da barra). O app mostra "15 kg/lado".
@@ -76,7 +78,8 @@ Treino "Perna NE" de 25/11 corrigido em 26/11/2026:
 - "adutor" (criação rápida) era o Abdutor: unido ao `abdutor_abre` (sessão,
   evento de conclusão e contagem); o item duplicado foi aposentado. Backup
   `backup-unir-abdutor-2026-11-26T11-15-21-734Z.json`.
-- Leg 45° = máquina com carga por lado (vale para o histórico inteiro);
+- Leg 45° = máquina com carga por lado só a partir de 25/11
+  (`carga_por_lado_desde: "2026-11-25"`; antes disso as cargas eram totais);
   aquecimento de 25/11 marcado como feito.
 - "levantamento pelvico" = Elevação pélvica no Smith (glúteos, por lado);
   "stiff" = Stiff com barra (por lado). Backup

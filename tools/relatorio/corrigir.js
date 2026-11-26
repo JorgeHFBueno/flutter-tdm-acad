@@ -6,7 +6,8 @@
 // plano.json:
 // {
 //   "catalogo": { "<id>": { "nome_popular": "...", "nome_cientifico": "...",
-//                  "tipo": "polia", "categoria": "costas", "carga_por_lado": true } },
+//                  "tipo": "polia", "categoria": "costas", "carga_por_lado": true,
+//                  "carga_por_lado_desde": "2026-11-25" } },   // optional: older sessions are totals
 //   "aquecimentos": { "<sessionId>": { "status": "completed",
 //                  "targetExerciseId": "<id>", "sets": [{ "reps": 12, "weightKg": 10 }] } }
 // }
@@ -19,7 +20,8 @@ const { init, admin, fixText, CONFIG_DIR } = require('./firestore');
 
 const CATEGORIES = ['peito', 'costas', 'ombros', 'biceps', 'triceps', 'pernas', 'gluteos',
   'panturrilhas', 'core', 'cardio', 'outros'];
-const CATALOG_FIELDS = ['nome_popular', 'nome_cientifico', 'tipo', 'categoria', 'carga_por_lado'];
+const CATALOG_FIELDS = ['nome_popular', 'nome_cientifico', 'tipo', 'categoria', 'carga_por_lado',
+  'carga_por_lado_desde'];
 
 /** Same rules as canonicalMachineCategory/machineCategoryKey in the app. */
 function categoryKey(category, id = '') {
@@ -38,7 +40,14 @@ function categoryKey(category, id = '') {
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-function patchExercise(e, item, warmupPatch, catalog) {
+/** Per side in a session on [date]; carga_por_lado_desde limits it to newer sessions. */
+function perSideAt(item, date) {
+  if (!item || item.carga_por_lado !== true) return false;
+  const since = item.carga_por_lado_desde;
+  return !since || !date || date >= new Date(`${since}T00:00:00`);
+}
+
+function patchExercise(e, item, warmupPatch, catalog, date) {
   const out = { ...e };
   if (e.isWarmup) {
     if (warmupPatch) {
@@ -51,7 +60,7 @@ function patchExercise(e, item, warmupPatch, catalog) {
     const target = catalog[out.targetExerciseId];
     if (target) {
       out.targetExerciseName = target.nome_popular;
-      if (target.carga_por_lado === true) out.loadPerSide = true;
+      if (perSideAt(target, date)) out.loadPerSide = true;
       else delete out.loadPerSide;
       out.type = target.tipo;
     }
@@ -62,7 +71,7 @@ function patchExercise(e, item, warmupPatch, catalog) {
     out.category = item.categoria;
     out.type = item.tipo;
     if ('scientificName' in e || !item.nome_cientifico_pendente) out.scientificName = item.nome_cientifico;
-    if (item.carga_por_lado === true) out.loadPerSide = true;
+    if (perSideAt(item, date)) out.loadPerSide = true;
     else delete out.loadPerSide;
   } else if (e.category) {
     out.category = categoryKey(e.category, e.exerciseId || '');
@@ -133,8 +142,9 @@ async function main() {
   for (const doc of sessions.docs) {
     const data = doc.data();
     const exercises = data.exercises || [];
+    const date = (data.startAt || data.performedAt)?.toDate?.();
     const fixed = exercises.map((e) =>
-      patchExercise(e, e.isWarmup ? null : catalog[e.exerciseId], warmups[doc.id], catalog));
+      patchExercise(e, e.isWarmup ? null : catalog[e.exerciseId], warmups[doc.id], catalog, date));
     const diffs = fixed
       .map((e, i) => {
         if (same(e, exercises[i])) return null;
