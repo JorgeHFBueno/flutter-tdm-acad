@@ -1190,13 +1190,20 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
       return classifyExerciseExecution(entry.execution) !=
           SessionExerciseCompletionState.completed;
     }).toList(growable: false);
+    var reasons = const <int, String>{};
     if (incomplete.isNotEmpty) {
-      final shouldFinish = await _confirmFinishIncomplete(incomplete);
-      if (shouldFinish != true) return null;
+      final chosen = await _confirmFinishIncomplete(incomplete);
+      if (chosen == null) return null;
+      reasons = chosen;
     }
     final entries = [
       for (final entry in _sessionEntries)
-        entry.copyWith(execution: _executionForForcedFinish(entry.execution)),
+        entry.copyWith(
+          execution: executionForForcedFinish(
+            entry.execution,
+            skipReason: reasons[entry.originalIndex],
+          ),
+        ),
     ];
     setState(() {
       _sessionEntries = entries;
@@ -1206,24 +1213,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     return entries;
   }
 
-  ExerciseExecution _executionForForcedFinish(ExerciseExecution execution) {
-    if (classifyExerciseExecution(execution) ==
-        SessionExerciseCompletionState.completed) {
-      return execution;
-    }
-    if (execution.sets.isEmpty) {
-      return execution.copyWith(
-        completed: true,
-        status: ExerciseExecutionStatus.skipped,
-      );
-    }
-    return execution.copyWith(
-      completed: true,
-      status: ExerciseExecutionStatus.partial,
-    );
-  }
-
-  Future<bool?> _confirmFinishIncomplete(
+  /// Asks why each machine was left undone. Returns originalIndex -> reason,
+  /// or null to go back to the workout.
+  Future<Map<int, String>?> _confirmFinishIncomplete(
     List<SessionExerciseEntry> incomplete,
   ) {
     final partial = incomplete
@@ -1236,41 +1228,86 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
             classifyExerciseExecution(entry.execution) ==
             SessionExerciseCompletionState.notDone)
         .toList(growable: false);
-    return showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Exercicios incompletos'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Existem exercicios incompletos neste treino.'),
-              if (partial.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text('Parciais (${partial.length})'),
-                for (final entry in partial.take(4))
-                  Text('- ${entry.machine.exerciseName}'),
-              ],
-              if (notDone.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Text('Nao feitos (${notDone.length})'),
-                for (final entry in notDone.take(4))
-                  Text('- ${entry.machine.exerciseName}'),
-              ],
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Voltar ao treino'),
-          ),
-          FilledButton(
-            onPressed: _isSaving ? null : () => Navigator.of(ctx).pop(true),
-            child: const Text('Encerrar treino mesmo assim'),
-          ),
+    final reasons = <int, String>{};
+    Widget reasonChips(String? selected, ValueChanged<String> onSelected) {
+      return Wrap(
+        spacing: 6,
+        children: [
+          for (final reason in PerceivedEffort.skipReasons.entries)
+            ChoiceChip(
+              label: Text(reason.value),
+              selected: selected == reason.key,
+              onSelected: (_) => onSelected(reason.key),
+            ),
         ],
+      );
+    }
+
+    return showDialog<Map<int, String>>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final allChosen = notDone
+              .every((entry) => reasons.containsKey(entry.originalIndex));
+          final shared = reasons.values.toSet();
+          return AlertDialog(
+            title: const Text('Exercicios incompletos'),
+            content: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (partial.isNotEmpty) ...[
+                    Text('Parciais (${partial.length})'),
+                    for (final entry in partial)
+                      Text('- ${entry.machine.exerciseName}'),
+                    const SizedBox(height: 12),
+                  ],
+                  if (notDone.isNotEmpty) ...[
+                    Text('Nao feitos (${notDone.length}): por que?'),
+                    if (notDone.length > 1) ...[
+                      const SizedBox(height: 8),
+                      const Text('Marcar todos:'),
+                      reasonChips(
+                        allChosen && shared.length == 1 ? shared.first : null,
+                        (reason) => setDialogState(() {
+                          for (final entry in notDone) {
+                            reasons[entry.originalIndex] = reason;
+                          }
+                        }),
+                      ),
+                    ],
+                    for (final entry in notDone) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        entry.machine.exerciseName,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      reasonChips(
+                        reasons[entry.originalIndex],
+                        (reason) => setDialogState(
+                          () => reasons[entry.originalIndex] = reason,
+                        ),
+                      ),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Voltar ao treino'),
+              ),
+              FilledButton(
+                onPressed: _isSaving || !allChosen
+                    ? null
+                    : () => Navigator.of(ctx).pop(Map.of(reasons)),
+                child: const Text('Encerrar treino'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

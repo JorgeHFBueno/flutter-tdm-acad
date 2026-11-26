@@ -59,7 +59,7 @@ test('period metrics: totals, comparison, records, new exercises, warmup', () =>
   assert.equal(r.periodoAnterior.variacaoPercentual.volumeKg, 57.5);
   assert.deepEqual(r.aquecimento, { feitos: 1, pulados: 1 });
   assert.deepEqual(r.percepcao, { adequate: 3, skipped_fatigue: 1 });
-  assert.deepEqual(r.naoRealizados, ['voador']);
+  assert.deepEqual(r.naoRealizados, { fadiga: ['voador'], tempo: [], substituida: [], semMotivo: [] });
 
   const supino = r.exercicios.find((e) => e.nome === 'supino');
   assert.equal(supino.cargaMaximaKg, 45);

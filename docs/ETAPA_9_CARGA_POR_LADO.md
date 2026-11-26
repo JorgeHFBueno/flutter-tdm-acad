@@ -84,3 +84,16 @@ Treino "Perna NE" de 25/11 corrigido em 26/11/2026:
 - "levantamento pelvico" = Elevação pélvica no Smith (glúteos, por lado);
   "stiff" = Stiff com barra (por lado). Backup
   `backup-2026-11-26T11-15-30-339Z.json`.
+
+## Motivo de máquina não realizada (26/11/2026)
+
+As fichas "NE" listam todas as máquinas possíveis do dia; nem todas são feitas.
+Ao encerrar o treino com máquinas sem séries, o app pede o motivo de cada uma:
+Fadiga (`skipped_fatigue`), Tempo (`skipped_time`) ou Substituída
+(`skipped_replaced`), com atalho "Marcar todos". As mesmas opções aparecem ao
+concluir uma máquina; "outro motivo" (`skipped_other`) ficou só para leitura.
+
+- Relatórios: `naoRealizados` = `{ fadiga, tempo, substituida, semMotivo }`.
+  A análise de domingo não trata "substituida" como falha.
+- `corrigir.js` aceita `"motivos": { "<sessionId>": { "<exerciseId>": "tempo" } }`
+  para treinos salvos sem motivo.

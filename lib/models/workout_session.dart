@@ -45,7 +45,18 @@ class PerceivedEffort {
   static const reducedReps = 'reduced_reps';
   static const reducedWeight = 'reduced_weight';
   static const skippedFatigue = 'skipped_fatigue';
+  static const skippedTime = 'skipped_time';
+  static const skippedReplaced = 'skipped_replaced';
+
+  /// Legacy "outro motivo"; still read, no longer offered.
   static const skippedOther = 'skipped_other';
+
+  /// Reasons offered for a machine left undone, with short labels.
+  static const skipReasons = <String, String>{
+    skippedFatigue: 'Fadiga',
+    skippedTime: 'Tempo',
+    skippedReplaced: 'Substituída',
+  };
 
   static const legacyAdequate = 'certo';
   static const legacyLight = 'leve';
@@ -83,8 +94,13 @@ class PerceivedEffort {
       allowsEmptySets: true,
     ),
     PerceivedEffortOption(
-      value: skippedOther,
-      label: 'Não realizado por outro motivo',
+      value: skippedTime,
+      label: 'Não realizado por falta de tempo',
+      allowsEmptySets: true,
+    ),
+    PerceivedEffortOption(
+      value: skippedReplaced,
+      label: 'Não realizado: substituído por outra máquina',
       allowsEmptySets: true,
     ),
   ];
@@ -106,6 +122,10 @@ class PerceivedEffort {
         return 'Concluído com menos carga';
       case skippedFatigue:
         return 'Não realizado por fadiga';
+      case skippedTime:
+        return 'Não realizado por falta de tempo';
+      case skippedReplaced:
+        return 'Não realizado: substituído por outra máquina';
       case skippedOther:
         return 'Não realizado por outro motivo';
       case null:
@@ -115,12 +135,13 @@ class PerceivedEffort {
     }
   }
 
-  static bool allowsEmptySets(String? value) {
-    return value == skippedFatigue || value == skippedOther;
-  }
+  static bool allowsEmptySets(String? value) => isSkipped(value);
 
   static bool isSkipped(String? value) {
-    return value == skippedFatigue || value == skippedOther;
+    return value == skippedFatigue ||
+        value == skippedTime ||
+        value == skippedReplaced ||
+        value == skippedOther;
   }
 
   static String? normalize(String? value) {
@@ -137,6 +158,8 @@ class PerceivedEffort {
       case reducedReps:
       case reducedWeight:
       case skippedFatigue:
+      case skippedTime:
+      case skippedReplaced:
       case skippedOther:
         return value;
       default:

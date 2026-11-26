@@ -9,8 +9,9 @@
 //                  "tipo": "polia", "categoria": "costas", "carga_por_lado": true,
 //                  "carga_por_lado_desde": "2026-11-25" } },   // optional: older sessions are totals
 //   "aquecimentos": { "<sessionId>": { "status": "completed",
-//                  "targetExerciseId": "<id>", "sets": [{ "reps": 12, "weightKg": 10 }] } }
-// }
+//                  "targetExerciseId": "<id>", "sets": [{ "reps": 12, "weightKg": 10 }] } },
+//   "motivos": { "<sessionId>": { "<exerciseId>": "fadiga" | "tempo" | "substituida" } }
+// }                // why a machine was not done (sessions saved by older app versions)
 // Old sessions are matched to the catalog by exerciseId, so renames reach the
 // whole history (reports group exercises by name).
 
@@ -39,6 +40,7 @@ function categoryKey(category, id = '') {
 }
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const SKIP_EFFORTS = { fadiga: 'skipped_fatigue', tempo: 'skipped_time', substituida: 'skipped_replaced' };
 
 /** Per side in a session on [date]; carga_por_lado_desde limits it to newer sessions. */
 function perSideAt(item, date) {
@@ -47,8 +49,13 @@ function perSideAt(item, date) {
   return !since || !date || date >= new Date(`${since}T00:00:00`);
 }
 
-function patchExercise(e, item, warmupPatch, catalog, date) {
+function patchExercise(e, item, warmupPatch, catalog, date, reason) {
   const out = { ...e };
+  if (reason && !e.isWarmup) {
+    out.perceivedEffort = SKIP_EFFORTS[reason];
+    out.completed = true;
+    if (!(e.sets || []).length) out.status = 'skipped';
+  }
   if (e.isWarmup) {
     if (warmupPatch) {
       Object.assign(out, warmupPatch);
@@ -136,15 +143,24 @@ async function main() {
   // 3. Session snapshots
   const sessions = await db.collection('workout_history').where('ownerUid', '==', uid).get();
   const warmups = plan.aquecimentos || {};
-  for (const id of Object.keys(warmups)) {
+  const reasons = plan.motivos || {};
+  for (const id of [...Object.keys(warmups), ...Object.keys(reasons)]) {
     if (!sessions.docs.some((d) => d.id === id)) throw new Error(`Sessão não encontrada: ${id}`);
+  }
+  for (const [id, byExercise] of Object.entries(reasons)) {
+    const ids = (sessions.docs.find((d) => d.id === id).data().exercises || []).map((e) => e.exerciseId);
+    for (const [exerciseId, reason] of Object.entries(byExercise)) {
+      if (!SKIP_EFFORTS[reason]) throw new Error(`Motivo inválido: ${reason} (use fadiga, tempo ou substituida)`);
+      if (!ids.includes(exerciseId)) throw new Error(`Exercício ${exerciseId} não está na sessão ${id}`);
+    }
   }
   for (const doc of sessions.docs) {
     const data = doc.data();
     const exercises = data.exercises || [];
     const date = (data.startAt || data.performedAt)?.toDate?.();
     const fixed = exercises.map((e) =>
-      patchExercise(e, e.isWarmup ? null : catalog[e.exerciseId], warmups[doc.id], catalog, date));
+      patchExercise(e, e.isWarmup ? null : catalog[e.exerciseId], warmups[doc.id], catalog, date,
+        (reasons[doc.id] || {})[e.exerciseId]));
     const diffs = fixed
       .map((e, i) => {
         if (same(e, exercises[i])) return null;

@@ -221,6 +221,8 @@ String symbolForMachinePerception(String? perception) {
     case PerceivedEffort.reducedWeight:
       return '¡';
     case PerceivedEffort.skippedFatigue:
+    case PerceivedEffort.skippedTime:
+    case PerceivedEffort.skippedReplaced:
     case PerceivedEffort.skippedOther:
       return 'i';
     default:

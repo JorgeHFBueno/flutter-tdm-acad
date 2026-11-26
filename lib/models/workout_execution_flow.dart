@@ -162,6 +162,28 @@ List<SessionExerciseEntry> movePendingDown(
   return updated;
 }
 
+/// How an entry is saved when the workout is finished early: done entries stay
+/// as they are, entries with work become partial and entries without work
+/// become skipped with [skipReason] (a [PerceivedEffort] skip value).
+ExerciseExecution executionForForcedFinish(
+  ExerciseExecution execution, {
+  String? skipReason,
+}) {
+  final state = classifyExerciseExecution(execution);
+  if (state == SessionExerciseCompletionState.completed) return execution;
+  if (state == SessionExerciseCompletionState.notDone) {
+    return execution.copyWith(
+      completed: true,
+      status: ExerciseExecutionStatus.skipped,
+      perceivedEffort: skipReason ?? execution.perceivedEffort,
+    );
+  }
+  return execution.copyWith(
+    completed: true,
+    status: ExerciseExecutionStatus.partial,
+  );
+}
+
 int firstPendingEntryIndex(List<SessionExerciseEntry> entries) {
   return entries.indexWhere((entry) => !entry.execution.completed);
 }

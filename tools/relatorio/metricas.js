@@ -4,6 +4,8 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const EFFORT_ALIASES = { certo: 'adequate', leve: 'light', fadiga: 'high_fatigue' };
+// Why a machine was left undone; "substituida" means another machine was chosen.
+const SKIP_REASONS = { skipped_fatigue: 'fadiga', skipped_time: 'tempo', skipped_replaced: 'substituida' };
 const INCREASE_TYPES = new Set([
   'weight_increased',
   'sets_increased',
@@ -168,7 +170,7 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
   let warmupDone = 0;
   let warmupSkipped = 0;
   const byCategory = {};
-  const notDone = [];
+  const notDone = { fadiga: [], tempo: [], substituida: [], semMotivo: [] };
   for (const session of current) {
     for (const exercise of session.exercises || []) {
       if (exercise.isWarmup) {
@@ -178,7 +180,10 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
       }
       const normalized = normalizeEffort(exercise.perceivedEffort);
       if (normalized) effort[normalized] = (effort[normalized] || 0) + 1;
-      if (exercise.status === 'skipped') notDone.push(exercise.exerciseName);
+      const skippedByEffort = String(exercise.perceivedEffort || '').startsWith('skipped_');
+      if (exercise.status === 'skipped' || (skippedByEffort && workSets(exercise).length === 0)) {
+        notDone[SKIP_REASONS[exercise.perceivedEffort] || 'semMotivo'].push(exercise.exerciseName);
+      }
       const category = exercise.category || 'sem categoria';
       const sets = workSets(exercise);
       if (!byCategory[category]) byCategory[category] = { series: 0, volumeKg: 0 };

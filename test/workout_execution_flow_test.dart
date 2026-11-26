@@ -268,6 +268,32 @@ void main() {
       expect(missing, ['remada']);
     });
   });
+
+  group('executionForForcedFinish', () {
+    ExerciseExecution exec({List<ExerciseSet> sets = const []}) =>
+        ExerciseExecution(
+            exerciseId: 'voador', exerciseName: 'Voador', sets: sets);
+
+    test('undone machine is skipped with the chosen reason', () {
+      final result = executionForForcedFinish(
+        exec(),
+        skipReason: PerceivedEffort.skippedReplaced,
+      );
+      expect(result.status, ExerciseExecutionStatus.skipped);
+      expect(result.completed, isTrue);
+      expect(result.perceivedEffort, PerceivedEffort.skippedReplaced);
+      expect(PerceivedEffort.isSkipped(result.perceivedEffort), isTrue);
+    });
+
+    test('machine with sets becomes partial and keeps no skip reason', () {
+      final result = executionForForcedFinish(
+        exec(sets: [ExerciseSet(setNumber: 1, reps: 10, weightKg: 20)]),
+        skipReason: PerceivedEffort.skippedTime,
+      );
+      expect(result.status, ExerciseExecutionStatus.partial);
+      expect(result.perceivedEffort, isNull);
+    });
+  });
 }
 
 MachineProfile _machine(
