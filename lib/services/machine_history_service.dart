@@ -619,6 +619,21 @@ class MachineService {
     return _firestore.collection('workout_history').doc();
   }
 
+  /// Sessions of one workout (equality filters only, so no composite index).
+  Future<List<WorkoutSession>> listSessionsForWorkout(
+    String ownerUid,
+    String workoutId,
+  ) async {
+    final snapshot = await _firestore
+        .collection('workout_history')
+        .where('ownerUid', isEqualTo: ownerUid)
+        .where('workoutId', isEqualTo: workoutId)
+        .get();
+    return snapshot.docs
+        .map((doc) => WorkoutSession.fromMap(doc.data(), id: doc.id))
+        .toList();
+  }
+
   Stream<WorkoutSession?> watchActiveSession(String ownerUid) {
     return _firestore
         .collection('workout_history')

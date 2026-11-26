@@ -345,4 +345,50 @@ void main() {
       });
     });
   });
+
+  group('machinesAddedDuringSessions', () {
+    ExerciseExecution ex(String id, String status, {bool warmup = false}) =>
+        ExerciseExecution(
+          exerciseId: id,
+          exerciseName: id,
+          sets: const [],
+          status: status,
+          isWarmup: warmup,
+        );
+    WorkoutSession session(DateTime start, List<ExerciseExecution> list,
+            {String status = WorkoutSessionStatus.completed}) =>
+        WorkoutSession(
+          workoutId: 'w',
+          workoutName: 'Costas',
+          ownerUid: 'u',
+          startAt: start,
+          exercises: list,
+          status: status,
+        );
+
+    test('returns done machines outside the workout after the last edit', () {
+      final added = machinesAddedDuringSessions(
+        [
+          session(DateTime(2026, 11, 18), [
+            ex('aquecimento', ExerciseExecutionStatus.completed, warmup: true),
+            ex('remada_baixa', ExerciseExecutionStatus.completed),
+            ex('barra_fixa', ExerciseExecutionStatus.completed),
+            ex('pulado', ExerciseExecutionStatus.skipped),
+            ex('pull_down', ExerciseExecutionStatus.partial),
+          ]),
+          session(DateTime(2026, 11, 10), [
+            ex('antes_da_edicao', ExerciseExecutionStatus.completed),
+          ]),
+          session(
+            DateTime(2026, 11, 19),
+            [ex('em_andamento', ExerciseExecutionStatus.completed)],
+            status: WorkoutSessionStatus.inProgress,
+          ),
+        ],
+        workoutMachineIds: ['remada_baixa'],
+        since: DateTime(2026, 11, 15),
+      );
+      expect(added, ['barra_fixa', 'pull_down']);
+    });
+  });
 }

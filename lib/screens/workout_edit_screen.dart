@@ -6,6 +6,7 @@ import '../models/machine_history.dart';
 import '../models/machine_catalog_item.dart';
 import '../models/machine_catalog_view.dart';
 import '../models/workout.dart';
+import '../models/workout_session.dart';
 import '../services/machine_history_service.dart';
 import '../services/machine_catalog_service.dart';
 import '../services/workout_service.dart';
@@ -27,6 +28,7 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
   final MachineCatalogService _catalogService = MachineCatalogService();
   late List<String> _selectedMachineIds;
   List<MachineProfile> _machines = const [];
+  Set<String> _addedFromSessions = const {};
   bool _isLoading = true;
   bool _isSaving = false;
 
@@ -56,21 +58,43 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
         _machineService.listForUser(user.uid),
         _catalogService.listCatalog(),
       ]);
+      final sessions = await _loadSessions(user.uid);
       final machines = resolveProfilesFromCatalog(
         results[0] as List<MachineProfile>,
         indexMachineCatalog(results[1] as dynamic),
         activeOnly: true,
         preserveIds: widget.workout.machineIds.toSet(),
       );
+      final available = {for (final m in machines) m.exerciseId};
+      final added = machinesAddedDuringSessions(
+        sessions,
+        workoutMachineIds: widget.workout.machineIds,
+        since: widget.workout.updatedAt,
+      ).where(available.contains).toList();
       if (!mounted) return;
       setState(() {
         _machines = machines;
+        _addedFromSessions = added.toSet();
+        for (final id in added) {
+          if (!_selectedMachineIds.contains(id)) _selectedMachineIds.add(id);
+        }
         _isLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       _showSnackBar('Erro ao carregar maquinas.');
+    }
+  }
+
+  /// Sessions of this workout; a failure here must not block editing.
+  Future<List<WorkoutSession>> _loadSessions(String uid) async {
+    final id = widget.workout.id;
+    if (id == null) return const [];
+    try {
+      return await _machineService.listSessionsForWorkout(uid, id);
+    } catch (_) {
+      return const [];
     }
   }
 
@@ -175,6 +199,16 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
             'A configuracao pertence a Maquina e e compartilhada por todos os treinos.',
             style: TextStyle(fontSize: 12),
           ),
+          if (_addedFromSessions.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              '${_addedFromSessions.length} maquina(s) feitas no treino fora da ficha ja vem marcadas (nova). Desmarque se nao quiser mante-las.',
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Expanded(
             child: ListView(
@@ -201,7 +235,11 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
                   for (final machine in group.value)
                     CheckboxListTile(
                       value: _selectedMachineIds.contains(machine.exerciseId),
-                      title: Text(machine.exerciseName),
+                      title: Text(
+                        _addedFromSessions.contains(machine.exerciseId)
+                            ? '${machine.exerciseName} (nova)'
+                            : machine.exerciseName,
+                      ),
                       subtitle: _MachineSubtitle(machine: machine),
                       onChanged: (checked) =>
                           _toggleMachine(machine.exerciseId, checked == true),

@@ -528,3 +528,34 @@ bool isExerciseGoalReached(ExerciseExecution execution) {
 }
 
 const Object _notProvided = Object();
+
+/// Machines done (completed or partial) in sessions of a workout after [since]
+/// that are not in the workout yet, oldest session first. These are machines
+/// added in the middle of a workout, which the edit screen offers pre-selected.
+List<String> machinesAddedDuringSessions(
+  Iterable<WorkoutSession> sessions, {
+  required Iterable<String> workoutMachineIds,
+  DateTime? since,
+}) {
+  DateTime? dateOf(WorkoutSession s) => s.startAt ?? s.performedAt;
+  final finished = sessions.where((s) {
+    final date = dateOf(s);
+    return s.status != WorkoutSessionStatus.inProgress &&
+        s.status != WorkoutSessionStatus.abandoned &&
+        date != null &&
+        (since == null || date.isAfter(since));
+  }).toList()
+    ..sort((a, b) => dateOf(a)!.compareTo(dateOf(b)!));
+  final known = workoutMachineIds.toSet();
+  final added = <String>[];
+  for (final session in finished) {
+    for (final exercise in session.exercises) {
+      final id = exercise.exerciseId?.trim() ?? '';
+      final done = exercise.status == ExerciseExecutionStatus.completed ||
+          exercise.status == ExerciseExecutionStatus.partial;
+      if (exercise.isWarmup || !done || id.isEmpty || !known.add(id)) continue;
+      added.add(id);
+    }
+  }
+  return added;
+}
