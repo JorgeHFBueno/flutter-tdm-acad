@@ -64,3 +64,20 @@ Barra Supino = barra fixa; Remada Baixa Curvada = remada curvada com barra
 corda costas" = extensão de tríceps acima da cabeça na polia com corda; Barra W
 por lado; "tríceps banco costas" = bíceps com halteres por lado (nome
 pendente); aquecimento de 17/11 marcado como feito.
+
+## Editar treino traz as máquinas feitas fora da ficha (26/11/2026)
+
+Máquinas adicionadas no meio do treino ficavam só no snapshot da sessão. A
+edição agora traz marcadas, como "(nova)", as máquinas concluídas ou parciais em
+sessões daquele treino feitas depois da última edição da ficha
+(`machinesAddedDuringSessions`). Desmarcar e salvar remove de vez.
+
+Treino "Perna NE" de 25/11 corrigido em 26/11/2026:
+- "adutor" (criação rápida) era o Abdutor: unido ao `abdutor_abre` (sessão,
+  evento de conclusão e contagem); o item duplicado foi aposentado. Backup
+  `backup-unir-abdutor-2026-11-26T11-15-21-734Z.json`.
+- Leg 45° = máquina com carga por lado (vale para o histórico inteiro);
+  aquecimento de 25/11 marcado como feito.
+- "levantamento pelvico" = Elevação pélvica no Smith (glúteos, por lado);
+  "stiff" = Stiff com barra (por lado). Backup
+  `backup-2026-11-26T11-15-30-339Z.json`.
