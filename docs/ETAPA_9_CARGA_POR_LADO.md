@@ -97,3 +97,23 @@ concluir uma máquina; "outro motivo" (`skipped_other`) ficou só para leitura.
   A análise de domingo não trata "substituida" como falha.
 - `corrigir.js` aceita `"motivos": { "<sessionId>": { "<exerciseId>": "tempo" } }`
   para treinos salvos sem motivo.
+
+## Cardio (27/11/2026)
+
+- Catálogo, categoria `cardio`: A Pé (`cardio_a_pe`), Bicicleta
+  (`cardio_bicicleta`), A Pé (esteira) (`cardio_a_pe_esteira`) e Bicicleta
+  (máquina) (`cardio_bicicleta_maquina`), todos na ficha "Cardio NE".
+- Exercício de cardio registra uma entrada só: minutos e km
+  (`ExerciseSet.durationMinutes` / `distanceKm`, reps e kg ficam 0). O app mostra
+  o ritmo (min/km); cardio não entra no volume em kg.
+- Feita uma atividade de cardio, as outras opções de cardio do treino ficam
+  como "substituída" sozinhas ao encerrar (`autoReplacedCardio`).
+- Relatórios: bloco `cardio` (sessoes, minutos, km, atividades com
+  ritmoMinPorKm) no semanal, mensal e geral; `periodoAnterior.cardio`;
+  `treinos[].cardio`. Cardio substituído não entra em `naoRealizados`.
+
+Treino de Costas de 26/11 revisado em 27/11: Remada Baixa (unilateral)
+criada (`remada_baixa_unilateral`, polia, por lado) e a sessão movida para
+ela; Serrote (halteres, por lado); Abs Banco = abdominal remador (peso do
+corpo); Remada baixa e Puxada alta = polia; as 4 séries lançadas no
+aquecimento passaram para a Barra Supino (fadiga).

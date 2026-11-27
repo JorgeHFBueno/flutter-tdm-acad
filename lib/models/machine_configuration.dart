@@ -10,6 +10,7 @@ class ResolvedExerciseConfiguration {
   final bool isComplete;
   final bool loadPerSide;
   final bool bodyweight;
+  final bool cardio;
 
   const ResolvedExerciseConfiguration({
     required this.configuredSets,
@@ -20,9 +21,11 @@ class ResolvedExerciseConfiguration {
     required this.isComplete,
     this.loadPerSide = false,
     this.bodyweight = false,
+    this.cardio = false,
   });
 
   String get compactLabel {
+    if (cardio) return cardioLabel;
     final setsText = configuredSets == null ? 'Sem meta' : '$configuredSets';
     return '$setsText x $configuredRepetitions - '
         '${bodyweight ? bodyweightLabel : formatKg(configuredWeightKg, perSide: loadPerSide)}';
@@ -51,8 +54,11 @@ ResolvedExerciseConfiguration resolveExerciseConfiguration({
         machine?.currentWeightKg != null,
     loadPerSide: machine?.catalogLoadPerSide ?? false,
     bodyweight: isBodyweightType(machine?.catalogType),
+    cardio: machine?.category == MachineCatalogCategory.cardio,
   );
 }
+
+const cardioLabel = 'cardio - minutos e km';
 
 const bodyweightLabel = 'peso do corpo';
 

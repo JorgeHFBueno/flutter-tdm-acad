@@ -121,6 +121,59 @@ function summarizeExerciseHistory(sessions) {
   return byExercise;
 }
 
+/** Pace "m:ss" per km from total minutes and km, or null. */
+function pace(minutes, km) {
+  if (!(minutes > 0) || !(km > 0)) return null;
+  const seconds = Math.round((minutes * 60) / km);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+}
+
+/** Cardio entries (minutes and km) of one session. */
+function cardioEntries(session) {
+  return (session.exercises || [])
+    .filter((e) => e.cardio && !e.isWarmup)
+    .flatMap((e) => (e.sets || []).map((s) => ({
+      nome: e.exerciseName,
+      minutos: s.durationMinutes || 0,
+      km: s.distanceKm || 0,
+    })))
+    .filter((e) => e.minutos > 0 || e.km > 0);
+}
+
+/** Cardio is kept apart from the kg volume: sessions, minutes, km and pace. */
+function cardioSummary(sessions) {
+  const byName = new Map();
+  let count = 0;
+  for (const session of sessions) {
+    const entries = cardioEntries(session);
+    if (entries.length) count += 1;
+    for (const e of entries) {
+      const item = byName.get(e.nome) || { nome: e.nome, sessoes: 0, minutos: 0, km: 0, minutosComKm: 0, kmComMinutos: 0 };
+      item.sessoes += 1;
+      item.minutos += e.minutos;
+      item.km += e.km;
+      if (e.minutos > 0 && e.km > 0) {
+        item.minutosComKm += e.minutos;
+        item.kmComMinutos += e.km;
+      }
+      byName.set(e.nome, item);
+    }
+  }
+  const atividades = [...byName.values()].map((i) => ({
+    nome: i.nome,
+    sessoes: i.sessoes,
+    minutos: round(i.minutos),
+    km: round(i.km, 2),
+    ritmoMinPorKm: pace(i.minutosComKm, i.kmComMinutos),
+  }));
+  return {
+    sessoes: count,
+    minutos: round(atividades.reduce((t, a) => t + a.minutos, 0)),
+    km: round(atividades.reduce((t, a) => t + a.km, 0), 2),
+    atividades,
+  };
+}
+
 function periodTotals(sessions) {
   let volume = 0;
   let sets = 0;
@@ -181,6 +234,8 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
       const normalized = normalizeEffort(exercise.perceivedEffort);
       if (normalized) effort[normalized] = (effort[normalized] || 0) + 1;
       const skippedByEffort = String(exercise.perceivedEffort || '').startsWith('skipped_');
+      const cardioReplaced = exercise.cardio && exercise.perceivedEffort === 'skipped_replaced';
+      if (cardioReplaced) continue;
       if (exercise.status === 'skipped' || (skippedByEffort && workSets(exercise).length === 0)) {
         notDone[SKIP_REASONS[exercise.perceivedEffort] || 'semMotivo'].push(exercise.exerciseName);
       }
@@ -246,6 +301,7 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
         fim: dateKey(new Date(previousRange.end.getTime() - DAY_MS)),
       },
       totais: previousTotals,
+      cardio: (({ sessoes, minutos, km }) => ({ sessoes, minutos, km }))(cardioSummary(previous)),
       variacaoPercentual: {
         sessoes: percentChange(totals.sessoes, previousTotals.sessoes),
         volumeKg: percentChange(totals.volumeKg, previousTotals.volumeKg),
@@ -258,7 +314,9 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
       duracaoMin:
         s.startAt && s.endAt ? Math.round((s.endAt - s.startAt) / 60000) : null,
       ...periodTotals([s]),
+      ...(cardioEntries(s).length && { cardio: cardioEntries(s) }),
     })),
+    cardio: cardioSummary(current),
     aquecimento: { feitos: warmupDone, pulados: warmupSkipped },
     percepcao: effort,
     naoRealizados: notDone,
@@ -315,6 +373,7 @@ function computeOverallMetrics({ sessions, events = [], until, since = null }) {
       totais: periodTotals([]),
       meses: [],
       exercicios: [],
+      cardio: cardioSummary([]),
       eraAnterior,
     };
   }
@@ -357,6 +416,7 @@ function computeOverallMetrics({ sessions, events = [], until, since = null }) {
     mediaSessoesPorSemana: round(history.length / weeks, 2),
     meses: [...months.entries()].map(([mes, list]) => ({ mes, ...periodTotals(list) })),
     exercicios,
+    cardio: cardioSummary(history),
     aumentosRegistrados: events.filter(
       (e) => isRealIncrease(e) && e.occurredAt < until && (!since || e.occurredAt >= since),
     ).length,

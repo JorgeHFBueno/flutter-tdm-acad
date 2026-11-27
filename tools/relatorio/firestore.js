@@ -109,8 +109,14 @@ function mapSession(doc, perSide) {
       perceivedEffort: e.perceivedEffort || null,
       cargaPorLado,
       pesoCorporal: e.type === 'peso_corporal' || isBodyweight(perSide, target, targetName || ''),
+      cardio: e.category === 'cardio',
       sets: Array.isArray(e.sets)
-        ? e.sets.map((s) => ({ reps: num(s.reps), weightKg: num(s.weightKg) * factor }))
+        ? e.sets.map((s) => ({
+          reps: num(s.reps),
+          weightKg: num(s.weightKg) * factor,
+          ...(s.durationMinutes != null && { durationMinutes: num(s.durationMinutes) }),
+          ...(s.distanceKm != null && { distanceKm: num(s.distanceKm) }),
+        }))
         : [],
       };
     }),

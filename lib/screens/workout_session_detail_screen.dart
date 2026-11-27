@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/machine_configuration.dart';
 import '../models/workout_session.dart';
+import '../models/cardio.dart';
 
 class WorkoutSessionDetailScreen extends StatefulWidget {
   const WorkoutSessionDetailScreen({super.key, required this.session});
@@ -117,6 +118,8 @@ class _WorkoutSessionDetailScreenState
               Text('OBS: ${exercise.observationSnapshot!.trim()}'),
             if (exercise.sets.isEmpty)
               const Text('Nenhuma série registrada.')
+            else if (exercise.isCardio)
+              ...exercise.sets.map((set) => Text(formatCardioSet(set)))
             else
               ...exercise.sets.map(
                 (set) => Padding(
@@ -128,7 +131,8 @@ class _WorkoutSessionDetailScreenState
                 ),
               ),
             const SizedBox(height: 4),
-            Text('Volume: ${formatCompactNumber(exercise.volume)} kg reps'),
+            if (!exercise.isCardio)
+              Text('Volume: ${formatCompactNumber(exercise.volume)} kg reps'),
           ],
         ),
       ),

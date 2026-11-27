@@ -5,16 +5,24 @@ class ExerciseSet {
   final int reps;
   final double weightKg;
 
+  /// Cardio only (reps and weight stay 0).
+  final double? durationMinutes;
+  final double? distanceKm;
+
   ExerciseSet({
     required this.setNumber,
     required this.reps,
     required this.weightKg,
+    this.durationMinutes,
+    this.distanceKm,
   });
 
   Map<String, dynamic> toMap() => {
         'setNumber': setNumber,
         'reps': reps,
         'weightKg': weightKg,
+        if (durationMinutes != null) 'durationMinutes': durationMinutes,
+        if (distanceKm != null) 'distanceKm': distanceKm,
       };
 
   factory ExerciseSet.fromMap(Map<String, dynamic> map) {
@@ -22,6 +30,8 @@ class ExerciseSet {
       setNumber: _readInt(map['setNumber']),
       reps: _readInt(map['reps']),
       weightKg: _readDouble(map['weightKg']),
+      durationMinutes: _readOptionalDouble(map['durationMinutes']),
+      distanceKm: _readOptionalDouble(map['distanceKm']),
     );
   }
 }
@@ -345,6 +355,9 @@ class ExerciseExecution {
 
   bool get isBodyweight => type == 'peso_corporal';
 
+  /// Cardio exercises record minutes and km instead of reps and kg.
+  bool get isCardio => category == 'cardio';
+
   bool get hasRegisteredWork => sets.isNotEmpty;
 
   bool get isGoalReached => isExerciseGoalReached(this);
@@ -477,6 +490,11 @@ int _readInt(Object? value) {
   if (value is int) return value;
   if (value is num) return value.toInt();
   return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+double? _readOptionalDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
 }
 
 double _readDouble(Object? value) {

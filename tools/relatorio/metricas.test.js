@@ -130,3 +130,25 @@ test('per-side exercises are flagged in the outputs', () => {
   assert.equal(cross.cargaMaximaKg, 30);
   assert.equal('cargaPorLado' in voador, false);
 });
+
+test('cardio is summarized apart from kg volume', () => {
+  const cardio = (id, minutes, km, extra = {}) => ({
+    exerciseId: id, exerciseName: id, category: 'cardio', cardio: true, status: 'completed',
+    perceivedEffort: 'adequate', sets: minutes == null ? [] : [{ reps: 0, weightKg: 0, durationMinutes: minutes, distanceKm: km }],
+    ...extra,
+  });
+  const sessions = [
+    session('2026-11-10T07:00', [cardio('A pé', 30, 5), cardio('Bicicleta', null, null, { status: 'skipped', perceivedEffort: 'skipped_replaced' })]),
+    session('2026-11-12T07:00', [cardio('A pé', 40, 6)]),
+    session('2026-11-13T19:00', [ex('supino', [[10, 40]])]),
+  ];
+  const r = m.computePeriodMetrics({ sessions, range: m.weekRange(new Date(2026, 10, 15, 19)) });
+  assert.deepEqual(r.cardio, {
+    sessoes: 2, minutos: 70, km: 11,
+    atividades: [{ nome: 'A pé', sessoes: 2, minutos: 70, km: 11, ritmoMinPorKm: '6:22' }],
+  });
+  assert.equal(r.totais.volumeKg, 400);
+  assert.equal(r.exercicios.length, 1);
+  assert.deepEqual(r.naoRealizados.substituida, []);
+  assert.deepEqual(r.treinos[0].cardio, [{ nome: 'A pé', minutos: 30, km: 5 }]);
+});

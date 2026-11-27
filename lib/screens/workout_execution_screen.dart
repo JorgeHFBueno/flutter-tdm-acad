@@ -14,6 +14,7 @@ import '../models/machine_catalog_item.dart';
 import '../models/machine_catalog_view.dart';
 import '../models/workout.dart';
 import '../models/workout_execution_flow.dart';
+import '../models/cardio.dart';
 import '../models/workout_machine_resolution.dart';
 import '../models/workout_session.dart';
 import '../services/machine_history_service.dart';
@@ -546,6 +547,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 execution.sets,
                 perSide: execution.loadPerSide,
                 bodyweight: execution.isBodyweight,
+                cardio: execution.isCardio,
               ),
               if (execution.perceivedEffort != null)
                 Text(
@@ -593,29 +595,51 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 12),
-        OutlinedButton.icon(
-          icon: const Icon(Icons.add),
-          label: const Text('Adicionar serie'),
-          onPressed: execution.completed
-              ? null
-              : () => _openAddSetDialog(
-                    title: 'Adicionar serie - ${entry.machine.exerciseName}',
-                    initialWeightKg: config.configuredWeightKg,
-                    perSide: execution.loadPerSide,
-                    bodyweight: execution.isBodyweight,
-                    defaultRepetitions: config.configuredRepetitions,
-                    currentSets: execution.sets,
-                    onAdd: (updatedSets) {
-                      _updateEntryExecution(
+        if (execution.isCardio)
+          OutlinedButton.icon(
+            icon: const Icon(Icons.directions_run),
+            label: Text(
+              execution.sets.isEmpty ? 'Registrar cardio' : 'Editar cardio',
+            ),
+            onPressed: execution.completed
+                ? null
+                : () => _openCardioDialog(
+                      title: entry.machine.exerciseName,
+                      current:
+                          execution.sets.isEmpty ? null : execution.sets.first,
+                      onSave: (set) => _updateEntryExecution(
                         entry,
-                        execution.copyWith(sets: updatedSets),
-                      );
-                    },
-                  ),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
+                        execution.copyWith(sets: [set]),
+                      ),
+                    ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+          )
+        else
+          OutlinedButton.icon(
+            icon: const Icon(Icons.add),
+            label: const Text('Adicionar serie'),
+            onPressed: execution.completed
+                ? null
+                : () => _openAddSetDialog(
+                      title: 'Adicionar serie - ${entry.machine.exerciseName}',
+                      initialWeightKg: config.configuredWeightKg,
+                      perSide: execution.loadPerSide,
+                      bodyweight: execution.isBodyweight,
+                      defaultRepetitions: config.configuredRepetitions,
+                      currentSets: execution.sets,
+                      onAdd: (updatedSets) {
+                        _updateEntryExecution(
+                          entry,
+                          execution.copyWith(sets: updatedSets),
+                        );
+                      },
+                    ),
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
           ),
-        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -657,6 +681,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     List<ExerciseSet> sets, {
     bool perSide = false,
     bool bodyweight = false,
+    bool cardio = false,
   }) {
     if (sets.isEmpty) {
       return const SizedBox.shrink();
@@ -665,10 +690,13 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (final set in sets)
-          Text(
-            'Serie ${set.setNumber}: ${set.reps} reps, '
-            '${formatSetLoad(set.weightKg, perSide: perSide, bodyweight: bodyweight)}',
-          ),
+          if (cardio)
+            Text(formatCardioSet(set))
+          else
+            Text(
+              'Serie ${set.setNumber}: ${set.reps} reps, '
+              '${formatSetLoad(set.weightKg, perSide: perSide, bodyweight: bodyweight)}',
+            ),
       ],
     );
   }
@@ -848,6 +876,87 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     } finally {
       if (mounted) setState(() => _isAddingExercise = false);
     }
+  }
+
+  /// Cardio is one entry: minutes and km (either may be left empty, not both).
+  Future<void> _openCardioDialog({
+    required String title,
+    required ExerciseSet? current,
+    required ValueChanged<ExerciseSet> onSave,
+  }) async {
+    String initial(double? value) =>
+        value == null ? '' : value.toString().replaceAll('.', ',');
+    final minutesController =
+        TextEditingController(text: initial(current?.durationMinutes));
+    final kmController =
+        TextEditingController(text: initial(current?.distanceKm));
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final minutes = parseDecimal(minutesController.text);
+          final km = parseDecimal(kmController.text);
+          final valid = (minutes ?? 0) > 0 || (km ?? 0) > 0;
+          final pace = formatPace(minutes, km);
+          const keyboard = TextInputType.numberWithOptions(decimal: true);
+          return AlertDialog(
+            title: Text(title),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: minutesController,
+                  keyboardType: keyboard,
+                  autofocus: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Minutos',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: kmController,
+                  keyboardType: keyboard,
+                  decoration: const InputDecoration(
+                    labelText: 'Distancia (km)',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (_) => setDialogState(() {}),
+                ),
+                if (pace != null) ...[
+                  const SizedBox(height: 12),
+                  Text('Ritmo: $pace'),
+                ],
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: !valid
+                    ? null
+                    : () {
+                        onSave(ExerciseSet(
+                          setNumber: 1,
+                          reps: 0,
+                          weightKg: 0,
+                          durationMinutes: minutes,
+                          distanceKm: km,
+                        ));
+                        Navigator.of(ctx).pop();
+                      },
+                child: const Text('Salvar'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    minutesController.dispose();
+    kmController.dispose();
   }
 
   Future<void> _openAddSetDialog({
@@ -1186,15 +1295,20 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
   }
 
   Future<List<SessionExerciseEntry>?> _entriesForWorkoutFinish() async {
+    final autoReasons = autoReplacedCardio([
+      for (final entry in _sessionEntries)
+        (originalIndex: entry.originalIndex, execution: entry.execution),
+    ]);
     final incomplete = _sessionEntries.where((entry) {
       return classifyExerciseExecution(entry.execution) !=
-          SessionExerciseCompletionState.completed;
+              SessionExerciseCompletionState.completed &&
+          !autoReasons.containsKey(entry.originalIndex);
     }).toList(growable: false);
-    var reasons = const <int, String>{};
+    final reasons = <int, String>{...autoReasons};
     if (incomplete.isNotEmpty) {
       final chosen = await _confirmFinishIncomplete(incomplete);
       if (chosen == null) return null;
-      reasons = chosen;
+      reasons.addAll(chosen);
     }
     final entries = [
       for (final entry in _sessionEntries)
