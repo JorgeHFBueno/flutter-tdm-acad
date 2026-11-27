@@ -151,13 +151,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 children: [
                   Expanded(
                     child: Text(
-                      sourceUnavailable
-                          ? 'Treino excluído - ${session.workoutName}'
-                          : session.workoutName,
+                      session.workoutName,
                       style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ),
-                  Text(dateLabel),
+                  Text(dateLabel, style: Theme.of(context).textTheme.bodySmall),
                 ],
               ),
               const SizedBox(height: 8),
@@ -170,8 +168,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 ),
                 const SizedBox(height: 4),
               ],
-              Text('Exercícios: $exerciseCount'),
-              Text('Volume total: $totalVolume kg reps'),
+              Text('$exerciseCount exercícios  ·  $totalVolume kg·reps'),
             ],
           ),
         ),

@@ -108,21 +108,7 @@ class _Menu2State extends State<Menu2> {
           child: ListView(
             padding: EdgeInsets.zero,
             children: [
-              DrawerHeader(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                child: Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Text(
-                    'Vanguard',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onPrimary,
-                      fontSize: 24,
-                    ),
-                  ),
-                ),
-              ),
+              const _DrawerBrand(),
               for (int i = 0; i < _pages.length; i++)
                 if (_pages[i].group == null)
                   ListTile(
@@ -193,4 +179,51 @@ class _MenuPage {
   final Widget Function() builder;
   final IconData icon;
   final String? group;
+}
+
+/// Cabeçalho do menu: patch do lobo + VANGUARD + conta logada.
+class _DrawerBrand extends StatelessWidget {
+  const _DrawerBrand();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final email = FirebaseAuth.instance.currentUser?.email;
+    return DrawerHeader(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.dividerTheme.color ?? theme.dividerColor,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Image.asset(
+            'assets/logos/patch_vanguard.png',
+            width: 76,
+            height: 76,
+            fit: BoxFit.contain,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('VANGUARD', style: theme.textTheme.headlineSmall),
+                if (email != null)
+                  Text(
+                    email,
+                    style: theme.textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../components/ui/status_tag.dart';
 
 import '../components/ui/app_state_message.dart';
 
@@ -296,20 +297,38 @@ class _WorkoutTile extends StatelessWidget {
     final missing = missingMachineIds(workout, machinesById);
     final machines = resolveWorkoutMachines(workout, machinesById);
     final names = machines.map((machine) => machine.exerciseName).take(3);
-    final subtitle = <String>[
-      '${workout.machineIds.length} maquina(s)',
-      if (names.isNotEmpty) names.join(', '),
-      if (missing.isNotEmpty) 'Referencia ausente',
+    final theme = Theme.of(context);
+    final details = <String>[
+      '${workout.machineIds.length} máquina(s)',
       if (workout.createdAt != null) _formatDate(workout.createdAt!),
-    ].join(' - ');
-    return ListTile(
-      title: Text(workout.name),
-      subtitle: Text(subtitle),
-      leading: Icon(
-        missing.isEmpty ? Icons.fitness_center : Icons.error_outline,
-        color: missing.isEmpty ? null : AppSemanticColors.of(context).warning,
+    ].join('  ·  ');
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        title: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(workout.name, style: theme.textTheme.titleSmall),
+            if (missing.isNotEmpty)
+              const StatusTag('Máquina ausente', tone: StatusTone.warning),
+          ],
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (names.isNotEmpty) Text(names.join(', ')),
+            Text(details, style: theme.textTheme.bodySmall),
+          ],
+        ),
+        leading: Icon(
+          missing.isEmpty ? Icons.fitness_center : Icons.error_outline,
+          color: missing.isEmpty ? null : AppSemanticColors.of(context).warning,
+        ),
+        trailing: const Icon(Icons.more_vert),
+        onTap: onTap,
       ),
-      onTap: onTap,
     );
   }
 
