@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../components/ui/app_state_message.dart';
+
 import '../app/appearance/app_semantic_colors.dart';
 
 import '../models/machine_configuration.dart';
@@ -168,7 +170,7 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Editar treino')),
       body: user == null
-          ? const Center(child: Text('Usuario nao autenticado'))
+          ? AppStateMessage.error('Usuário não autenticado.')
           : _buildContent(),
     );
   }
