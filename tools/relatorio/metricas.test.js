@@ -150,5 +150,6 @@ test('cardio is summarized apart from kg volume', () => {
   assert.equal(r.totais.volumeKg, 400);
   assert.equal(r.exercicios.length, 1);
   assert.deepEqual(r.naoRealizados.substituida, []);
+  assert.deepEqual(r.percepcao, { adequate: 3 });
   assert.deepEqual(r.treinos[0].cardio, [{ nome: 'A pé', minutos: 30, km: 5 }]);
 });

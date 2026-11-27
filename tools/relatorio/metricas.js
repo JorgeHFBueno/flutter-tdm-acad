@@ -231,11 +231,11 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
         else if (workSets(exercise).length > 0) warmupDone += 1;
         continue;
       }
+      // Unchosen cardio options are not a signal: skip them entirely.
+      if (exercise.cardio && exercise.perceivedEffort === 'skipped_replaced') continue;
       const normalized = normalizeEffort(exercise.perceivedEffort);
       if (normalized) effort[normalized] = (effort[normalized] || 0) + 1;
       const skippedByEffort = String(exercise.perceivedEffort || '').startsWith('skipped_');
-      const cardioReplaced = exercise.cardio && exercise.perceivedEffort === 'skipped_replaced';
-      if (cardioReplaced) continue;
       if (exercise.status === 'skipped' || (skippedByEffort && workSets(exercise).length === 0)) {
         notDone[SKIP_REASONS[exercise.perceivedEffort] || 'semMotivo'].push(exercise.exerciseName);
       }
