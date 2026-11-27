@@ -13,6 +13,15 @@ class RetroCrtSettings {
   final double noiseOpacity;
   final double sweepOpacity;
 
+  /// Só a faixa de varredura (camada animada do overlay).
+  RetroCrtSettings sweepOnly() => RetroCrtSettings(
+        scanlineOpacity: 0,
+        vignetteOpacity: 0,
+        glowOpacity: 0,
+        noiseOpacity: 0,
+        sweepOpacity: sweepOpacity,
+      );
+
   factory RetroCrtSettings.fromIntensity(double intensity) {
     final value = intensity.clamp(0.0, 1.0);
     return RetroCrtSettings(

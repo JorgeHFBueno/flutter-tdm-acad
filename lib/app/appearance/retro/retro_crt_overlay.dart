@@ -66,17 +66,31 @@ class _RetroCrtOverlayState extends State<RetroCrtOverlay>
               radius: 1.15,
             ),
           ),
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return CustomPaint(
-                painter: RetroScanlinePainter(
-                  settings: settings,
-                  sweepProgress: disableAnimations ? null : _controller.value,
+          // Duas camadas: scanlines e ruído não mudam e são pintados uma vez;
+          // só a faixa de varredura repinta a cada quadro.
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              RepaintBoundary(
+                child: CustomPaint(
+                  painter: RetroScanlinePainter(settings: settings),
                 ),
-                child: const SizedBox.expand(),
-              );
-            },
+              ),
+              if (!disableAnimations && settings.sweepOpacity > 0)
+                RepaintBoundary(
+                  child: AnimatedBuilder(
+                    animation: _controller,
+                    builder: (context, child) {
+                      return CustomPaint(
+                        painter: RetroScanlinePainter(
+                          settings: settings.sweepOnly(),
+                          sweepProgress: _controller.value,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
           ),
         ),
       ),
