@@ -410,17 +410,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(TextFormField), findsNothing);
-    expect(find.text('40,5 kg'), findsOneWidget);
-    expect(find.text('12'), findsOneWidget);
+    expect(_inDialog('40,5 kg'), findsOneWidget);
+    expect(_inDialog('12'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Aumentar peso'));
     await tester.pump();
-    expect(find.text('41,5 kg'), findsOneWidget);
+    expect(_inDialog('41,5 kg'), findsOneWidget);
     expect(find.textContaining('Serie 1:'), findsNothing);
 
     await tester.tap(find.byTooltip('Diminuir repeticoes'));
     await tester.pump();
-    expect(find.text('11'), findsOneWidget);
+    expect(_inDialog('11'), findsOneWidget);
 
     await tester.tap(find.text('Adicionar'));
     await tester.pumpAndSettle();
@@ -447,7 +447,7 @@ void main() {
     await tester.tap(find.text('Adicionar serie'));
     await tester.pumpAndSettle();
 
-    expect(find.text('0 kg'), findsOneWidget);
+    expect(_inDialog('0 kg'), findsOneWidget);
     final decreaseWeight = tester.widget<OutlinedButton>(
       find.widgetWithText(OutlinedButton, '-').first,
     );
@@ -494,6 +494,12 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 }
+
+/// Text inside the open set dialog (the focused card shows the target load too).
+Finder _inDialog(String text) => find.descendant(
+      of: find.byType(AlertDialog),
+      matching: find.text(text),
+    );
 
 Widget _executionApp({
   required Workout workout,

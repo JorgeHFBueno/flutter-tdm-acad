@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../components/ui/stat_value.dart';
+import '../components/ui/status_tag.dart';
+import '../components/ui/app_panel.dart';
 
 import '../app/appearance/retro/retro_typography.dart';
 
@@ -294,18 +297,19 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
             ],
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
-              child: ElevatedButton(
+              child: OutlinedButton.icon(
                 onPressed: _isSaving ? null : _finishWorkout,
-                style: ElevatedButton.styleFrom(
+                style: OutlinedButton.styleFrom(
                   minimumSize: const Size.fromHeight(48),
                 ),
-                child: _isSaving
+                icon: _isSaving
                     ? const SizedBox(
                         height: 20,
                         width: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Text('Concluir treino'),
+                    : const Icon(Icons.sports_score),
+                label: const Text('Concluir treino'),
               ),
             ),
           ],
@@ -320,18 +324,13 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
     final selectedTarget = _warmupExecution.targetExerciseName;
     final targetWeight = _defaultWeightForExerciseName(selectedTarget);
 
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: AppPanel(
+        title: 'Aquecimento',
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Aquecimento',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               isExpanded: true,
               value: targetMachines.any((m) => m.exerciseName == selectedTarget)
@@ -376,44 +375,56 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
             _buildObservationText(_warmupExecution.targetExerciseId),
             Text(
               'Volume: ${formatCompactNumber(_warmupExecution.volume)} kg reps',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Wrap(
-                children: [
-                  IconButton(
-                    tooltip: 'Adicionar serie',
-                    icon: const Icon(Icons.add),
-                    onPressed: selectedTarget == null
-                        ? null
-                        : () => _openAddSetDialog(
-                              title: 'Adicionar serie - Aquecimento',
-                              initialWeightKg: targetWeight,
-                              perSide: _warmupExecution.loadPerSide,
-                              bodyweight: _warmupExecution.isBodyweight,
-                              defaultRepetitions: 10,
-                              currentSets: _warmupExecution.sets,
-                              onAdd: (sets) {
-                                setState(() {
-                                  _warmupExecution = _warmupExecution.copyWith(
-                                    sets: sets,
-                                  );
-                                });
-                                _scheduleAutosave();
-                              },
-                            ),
-                  ),
-                  TextButton(
-                    onPressed: _skipWarmup,
-                    child: const Text('Pular aquecimento'),
-                  ),
-                  TextButton.icon(
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Nova série'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: selectedTarget == null
+                    ? null
+                    : () => _openAddSetDialog(
+                          title: 'Adicionar serie - Aquecimento',
+                          initialWeightKg: targetWeight,
+                          perSide: _warmupExecution.loadPerSide,
+                          bodyweight: _warmupExecution.isBodyweight,
+                          defaultRepetitions: 10,
+                          currentSets: _warmupExecution.sets,
+                          onAdd: (sets) {
+                            setState(() {
+                              _warmupExecution = _warmupExecution.copyWith(
+                                sets: sets,
+                              );
+                            });
+                            _scheduleAutosave();
+                          },
+                        ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: _skipWarmup,
+                  child: const Text('Pular aquecimento'),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
                     icon: const Icon(Icons.flag),
                     label: const Text('Concluir aquecimento'),
                     onPressed: _completeWarmup,
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(48),
+                    ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ],
         ),
@@ -522,10 +533,37 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 Text(
                     'Nao realizado: ${PerceivedEffort.labelFor(execution.perceivedEffort)}'),
               _buildObservationText(entry.machine.exerciseId),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Text('Meta atual: ${config.compactLabel}'),
-              ),
+              if (focusedView && !config.cardio)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Wrap(
+                    spacing: 24,
+                    runSpacing: 12,
+                    children: [
+                      StatValue(
+                        label: 'Séries × reps',
+                        value: '${config.configuredSets ?? '-'} × '
+                            '${config.configuredRepetitions}',
+                      ),
+                      StatValue(
+                        label: 'Carga meta',
+                        value: config.bodyweight &&
+                                config.configuredWeightKg <= 0
+                            ? bodyweightLabel
+                            : formatCompactNumber(config.configuredWeightKg),
+                        unit:
+                            config.bodyweight && config.configuredWeightKg <= 0
+                                ? null
+                                : (config.loadPerSide ? 'kg/lado' : 'kg'),
+                      ),
+                    ],
+                  ),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Text('Meta atual: ${config.compactLabel}'),
+                ),
               _buildLatestIncreaseText(entry.machine),
               if (goalReached && !completed) ...[
                 const SizedBox(height: 4),
@@ -558,14 +596,20 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 Text(
                     'Percepcao: ${PerceivedEffort.labelFor(execution.perceivedEffort)}'),
               if (execution.status == ExerciseExecutionStatus.partial)
-                const Text('Status: parcial'),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: StatusTag('Parcial', tone: StatusTone.warning),
+                ),
               if (execution.status == ExerciseExecutionStatus.skipped)
-                const Text('Status: nao feito'),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 4),
+                  child: StatusTag('Não feito'),
+                ),
               Align(
                 alignment: Alignment.centerRight,
                 child: focusedView
                     ? _buildFocusedControls(entry, config)
-                    : ElevatedButton.icon(
+                    : OutlinedButton.icon(
                         icon: Icon(completed ? Icons.check : Icons.play_arrow),
                         label: Text(
                           completed
@@ -574,7 +618,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                         ),
                         onPressed:
                             canStart ? () => _startExercise(entry) : null,
-                        style: ElevatedButton.styleFrom(
+                        style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                         ),
                       ),
