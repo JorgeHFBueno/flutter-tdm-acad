@@ -2,8 +2,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
-import '../components/ui/app_state_message.dart';
-
 import '../models/machine_catalog_item.dart';
 import '../models/machine_catalog_view.dart';
 import '../models/machine_configuration.dart';
@@ -54,7 +52,7 @@ class _MachinesScreenState extends State<MachinesScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final content = user == null
-        ? AppStateMessage.error('Usuário não autenticado.')
+        ? const Center(child: Text('Usuário não autenticado.'))
         : FutureBuilder<MachineCatalogImportReport>(
             future: _import,
             builder: (context, importSnapshot) {
@@ -102,8 +100,12 @@ class _MachinesScreenState extends State<MachinesScreen> {
         appBar: AppBar(title: const Text('Máquinas')), body: content);
   }
 
-  Widget _error(String message, VoidCallback retry) =>
-      AppStateMessage.error(message, onRetry: retry);
+  Widget _error(String message, VoidCallback retry) => Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(message),
+          TextButton(onPressed: retry, child: const Text('Tentar novamente')),
+        ]),
+      );
 
   Widget _list(String uid, List<MachineCatalogItem> catalog,
       List<MachineProfile> profiles) {
@@ -205,9 +207,13 @@ class _MachinesScreenState extends State<MachinesScreen> {
             ),
           ]),
       if (catalog.isEmpty)
-        const AppStateMessage.empty('Catálogo vazio.')
+        const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: Text('Catálogo vazio.')))
       else if (visible.isEmpty)
-        const AppStateMessage.empty('Nenhum resultado encontrado.'),
+        const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: Text('Nenhum resultado encontrado.'))),
       for (final item in visible)
         _CatalogCard(
           item: item,

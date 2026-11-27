@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../components/ui/stat_value.dart';
-import '../components/ui/app_panel.dart';
 import 'package:intl/intl.dart';
 import '../models/machine_configuration.dart';
 import '../models/workout_session.dart';
@@ -46,42 +44,13 @@ class _WorkoutSessionDetailScreenState
                 session.workoutName,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
-              const SizedBox(height: 12),
-              AppPanel(
-                title: 'RESUMO',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: 24,
-                      runSpacing: 12,
-                      children: [
-                        StatValue(label: 'Duração', value: durationLabel),
-                        StatValue(
-                          label: 'Volume',
-                          value: formatCompactNumber(
-                            calculateSessionVolume(session),
-                          ),
-                          unit: 'kg·reps',
-                        ),
-                        StatValue(
-                          label: 'Exercícios',
-                          value:
-                              '${session.exercises.where((e) => !e.isWarmup).length}',
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Realizado em: $dateLabel',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                    Text(
-                      'Início: $startLabel  ·  Fim: $endLabel',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 8),
+              Text('Realizado em: $dateLabel'),
+              Text('Início: $startLabel'),
+              Text('Fim: $endLabel'),
+              Text('Duração: $durationLabel'),
+              Text(
+                'Volume total: ${formatCompactNumber(calculateSessionVolume(session))} kg reps',
               ),
               const SizedBox(height: 16),
               Text(

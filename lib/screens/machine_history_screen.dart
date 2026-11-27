@@ -2,8 +2,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../components/ui/app_state_message.dart';
-
 import '../app/appearance/retro/retro_typography.dart';
 
 import '../app/appearance/app_semantic_colors.dart';
@@ -41,7 +39,7 @@ class _LegacyMachinesScreenState extends State<LegacyMachinesScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final content = user == null
-        ? AppStateMessage.error('Usuário não autenticado.')
+        ? const Center(child: Text('Usuário não autenticado.'))
         : StreamBuilder<List<MachineProfile>>(
             stream: _service.watchForUser(user.uid),
             builder: (context, snapshot) {
@@ -49,19 +47,37 @@ class _LegacyMachinesScreenState extends State<LegacyMachinesScreen> {
                 return const Center(child: CircularProgressIndicator());
               }
               if (snapshot.hasError) {
-                return AppStateMessage.error(
-                  'Erro ao carregar Máquinas.',
-                  onRetry: () => setState(() {}),
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Erro ao carregar Máquinas.'),
+                      TextButton(
+                        onPressed: () => setState(() {}),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ],
+                  ),
                 );
               }
               final machines = snapshot.data ?? const <MachineProfile>[];
               if (machines.isEmpty) {
-                return AppStateMessage.empty(
-                  'Nenhuma máquina cadastrada.',
-                  action: ElevatedButton.icon(
-                    icon: const Icon(Icons.add),
-                    label: const Text('Cadastrar máquina'),
-                    onPressed: () => _openCreateDialog(user.uid, machines),
+                return Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('Nenhuma máquina cadastrada.'),
+                        const SizedBox(height: 12),
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.add),
+                          label: const Text('Cadastrar máquina'),
+                          onPressed: () =>
+                              _openCreateDialog(user.uid, machines),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               }
@@ -528,11 +544,11 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return AppStateMessage.error('Erro ao carregar máquina.');
+            return const Center(child: Text('Erro ao carregar máquina.'));
           }
           final machine = snapshot.data;
           if (machine == null) {
-            return AppStateMessage.error('Máquina não encontrada.');
+            return const Center(child: Text('Máquina não encontrada.'));
           }
           final observation = machine.observationText;
           final config = resolveExerciseConfiguration(machine: machine);

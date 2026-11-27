@@ -1,9 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../components/ui/status_tag.dart';
-
-import '../components/ui/app_state_message.dart';
 import 'package:intl/intl.dart';
 
 import '../models/machine_configuration.dart';
@@ -30,7 +27,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     final content = user == null
-        ? AppStateMessage.error('Usuário não autenticado.')
+        ? const Center(child: Text('Usuário não autenticado.'))
         : StreamBuilder<List<Workout>>(
             stream: _workoutService.getWorkoutsForUser(user.uid),
             builder: (context, workoutsSnapshot) {
@@ -66,13 +63,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     debugPrint(
                       'Erro ao carregar histórico: ${snapshot.error}',
                     );
-                    return AppStateMessage.error('Erro ao carregar histórico.');
+                    return const Center(
+                        child: Text('Erro ao carregar histórico.'));
                   }
 
                   final docs = snapshot.data?.docs ?? [];
                   if (docs.isEmpty) {
-                    return const AppStateMessage.empty(
-                      'Nenhuma sessão registrada ainda.',
+                    return const Center(
+                      child: Text('Nenhuma sessão registrada ainda.'),
                     );
                   }
 
@@ -162,11 +160,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               const SizedBox(height: 8),
               if (sourceUnavailable) ...[
-                StatusTag(
+                Text(
                   session.workoutId.trim().isEmpty
                       ? 'Origem indisponível'
                       : 'Origem excluída',
-                  tone: StatusTone.warning,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
               ],

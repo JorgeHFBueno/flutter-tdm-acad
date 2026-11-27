@@ -1,8 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../components/ui/app_state_message.dart';
-
 import '../models/machine_configuration.dart';
 import '../models/machine_history.dart';
 import '../models/machine_catalog_item.dart';
@@ -143,7 +141,7 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final content = user == null
-        ? AppStateMessage.error('Usuário não autenticado.')
+        ? const Center(child: Text('Usuario nao autenticado'))
         : _buildContent();
     if (!widget.embedInScaffold) return content;
     return Scaffold(
@@ -157,18 +155,30 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (_machines.isEmpty) {
-      return AppStateMessage.empty(
-        'Cadastre uma maquina antes de criar um treino.',
-        action: ElevatedButton.icon(
-          icon: const Icon(Icons.add),
-          label: const Text('Cadastrar maquina'),
-          onPressed: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const MachinesScreen(),
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Cadastre uma maquina antes de criar um treino.',
+                textAlign: TextAlign.center,
               ),
-            );
-          },
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.add),
+                label: const Text('Cadastrar maquina'),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MachinesScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
         ),
       );
     }

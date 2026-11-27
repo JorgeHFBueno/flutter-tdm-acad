@@ -1,8 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../components/ui/status_tag.dart';
-
-import '../components/ui/app_state_message.dart';
 
 import '../models/workout.dart';
 import '../models/workout_session.dart';
@@ -25,7 +22,7 @@ class HomeScreen extends StatelessWidget {
 
     if (user == null) {
       return _wrapContent(
-        AppStateMessage.error('Usuário não autenticado.'),
+        const Center(child: Text('Usuário não autenticado')),
       );
     }
 
@@ -62,7 +59,7 @@ class HomeScreen extends StatelessWidget {
 
                 if (snapshot.hasError) {
                   debugPrint('Erro ao carregar treinos: ${snapshot.error}');
-                  return AppStateMessage.error('Erro ao carregar treinos.');
+                  return const Center(child: Text('Erro ao carregar treinos.'));
                 }
 
                 final workouts = snapshot.data ?? [];
@@ -99,17 +96,26 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildEmptyState(BuildContext context) {
-    return AppStateMessage.empty(
-      'Você ainda não possui treinos cadastrados.',
-      action: ElevatedButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const WorkoutCreationScreen(),
-            ),
-          );
-        },
-        child: const Text('Criar treino agora'),
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Text(
+            'Você ainda não possui treinos cadastrados.',
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const WorkoutCreationScreen(),
+                ),
+              );
+            },
+            child: const Text('Criar treino agora'),
+          ),
+        ],
       ),
     );
   }
@@ -171,13 +177,7 @@ class HomeScreen extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.play_circle_outline),
-        title: const Row(
-          children: [
-            Flexible(child: Text('Continuar treino')),
-            SizedBox(width: 8),
-            StatusTag('Em andamento', tone: StatusTone.active),
-          ],
-        ),
+        title: const Text('Continuar treino'),
         subtitle: Text(
           [
             session.workoutName,
