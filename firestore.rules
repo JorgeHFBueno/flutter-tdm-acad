@@ -1,10 +1,49 @@
 rules_version = '2';
 
+// Each user only reads and writes their own data. The Node scripts in
+// tools/relatorio use the Admin SDK, which is not subject to these rules.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /{document=**} {
-				allow read: if true;
-        allow write: if request.auth.uid != null;    }
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    // Profile, machines and their events, workouts, weighings, settings.
+    match /users/{uid}/{document=**} {
+      allow read, write: if isOwner(uid);
+    }
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    // Session snapshots. A get on a session not created yet (resource == null)
+    // is allowed so the app can check before the first save.
+    match /workout_history/{sessionId} {
+      allow read: if signedIn()
+        && (resource == null || resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Published analyses.
+    match /workout_analysis_logs/{logId} {
+      allow read, delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+    }
+
+    // Shared machine catalog.
+    match /machine_catalog/{itemId} {
+      allow read, write: if signedIn();
+    }
+
+    // Anything else (e.g. the legacy root /workouts) is closed.
   }
 }

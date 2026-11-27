@@ -5,7 +5,7 @@
 //   Always includes "semanal". On the first Sunday of the month (or with
 //   --forcar-mensal) also includes "mensal" (previous month) and "geral".
 
-const { init, loadSessions, loadEvents, loadEraStart } = require('./firestore');
+const { init, loadSessions, loadEvents, loadEraStart, loadProfile } = require('./firestore');
 const m = require('./metricas');
 
 function parseArgs(argv) {
@@ -32,10 +32,11 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const ref = args.data ? new Date(`${args.data}T19:00:00`) : lastSunday(new Date());
   const { db, uid } = init();
-  const [sessions, events, eraStart] = await Promise.all([
+  const [sessions, events, eraStart, profile] = await Promise.all([
     loadSessions(db, uid),
     loadEvents(db, uid),
     loadEraStart(db, uid),
+    loadProfile(db, uid),
   ]);
 
   const week = m.weekRange(ref);
@@ -43,7 +44,7 @@ async function main() {
     start: new Date(week.start.getTime() - 7 * 86400000),
     end: week.start,
   };
-  const semanal = m.computePeriodMetrics({ sessions, events, range: week, previousRange: previousWeek });
+  const semanal = m.computePeriodMetrics({ sessions, events, range: week, previousRange: previousWeek, profile });
   const relatorios = {
     semanal: {
       titulo: `Análise semanal ${fmt(semanal.periodo.inicio)} a ${fmt(semanal.periodo.fim)}`,
@@ -55,7 +56,7 @@ async function main() {
   if (args.forcarMensal || m.isFirstSundayOfMonth(ref)) {
     const month = m.previousMonthRange(ref);
     const previousMonth = m.previousMonthRange(month.start);
-    const mensal = m.computePeriodMetrics({ sessions, events, range: month, previousRange: previousMonth });
+    const mensal = m.computePeriodMetrics({ sessions, events, range: month, previousRange: previousMonth, profile });
     const monthLabel = month.start.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     relatorios.mensal = {
       titulo: `Análise mensal ${monthLabel}`,
@@ -65,7 +66,7 @@ async function main() {
     relatorios.geral = {
       titulo: `Análise geral até ${fmt(m.dateKey(ref))}`,
       periodoTexto: 'geral',
-      metricas: m.computeOverallMetrics({ sessions, events, until: week.end, since: eraStart }),
+      metricas: m.computeOverallMetrics({ sessions, events, until: week.end, since: eraStart, profile }),
     };
   }
 

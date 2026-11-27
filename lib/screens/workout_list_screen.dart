@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../components/ui/app_state_message.dart';
+
 import '../app/appearance/app_semantic_colors.dart';
 
 import '../models/machine_history.dart';
@@ -40,7 +42,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
   @override
   Widget build(BuildContext context) {
     final content = _uid == null
-        ? const Center(child: Text('Usuario nao autenticado'))
+        ? AppStateMessage.error('Usuário não autenticado.')
         : _buildStreams();
 
     if (!widget.embedInScaffold) {
@@ -60,7 +62,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
           return const Center(child: CircularProgressIndicator());
         }
         if (workoutSnapshot.hasError) {
-          return const Center(child: Text('Erro ao carregar treinos.'));
+          return AppStateMessage.error('Erro ao carregar treinos.');
         }
         return StreamBuilder<List<MachineProfile>>(
           stream: _machinesStream,
@@ -69,7 +71,7 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
               return const Center(child: CircularProgressIndicator());
             }
             if (machineSnapshot.hasError) {
-              return const Center(child: Text('Erro ao carregar maquinas.'));
+              return AppStateMessage.error('Erro ao carregar maquinas.');
             }
             final workouts = workoutSnapshot.data ?? const <Workout>[];
             final machinesById = {
@@ -78,11 +80,8 @@ class _WorkoutListScreenState extends State<WorkoutListScreen> {
                 machine.exerciseId: machine,
             };
             if (workouts.isEmpty) {
-              return const Center(
-                child: Text(
-                  'Voce ainda nao cadastrou nenhum treino novo. Crie um treino selecionando Maquinas cadastradas.',
-                  textAlign: TextAlign.center,
-                ),
+              return const AppStateMessage.empty(
+                'Voce ainda nao cadastrou nenhum treino novo. Crie um treino selecionando Maquinas cadastradas.',
               );
             }
             return ListView.builder(

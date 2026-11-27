@@ -121,6 +121,79 @@ function summarizeExerciseHistory(sessions) {
   return byExercise;
 }
 
+// --- Body profile -----------------------------------------------------------
+// profile = { nascimento: 'AAAA-MM-DD', alturaM, sexo, objetivo, pesagens: [{ date, pesoKg }] }
+
+/** Latest weighing on or before [date]; the first one if all are later. */
+function weightAt(profile, date) {
+  const list = (profile && profile.pesagens) || [];
+  if (!list.length) return null;
+  let found = null;
+  for (const p of list) if (p.date <= date) found = p;
+  return found || list[0];
+}
+
+function ageAt(birth, date) {
+  if (!birth) return null;
+  const [y, mo, d] = birth.split('-').map(Number);
+  let age = date.getFullYear() - y;
+  if (date.getMonth() + 1 < mo || (date.getMonth() + 1 === mo && date.getDate() < d)) age -= 1;
+  return age;
+}
+
+/** Profile as of [date], for the report JSON. */
+function profileSummary(profile, date) {
+  if (!profile) return null;
+  const weight = weightAt(profile, date);
+  const first = (profile.pesagens || [])[0];
+  return {
+    idade: ageAt(profile.nascimento, date),
+    alturaM: profile.alturaM ?? null,
+    sexo: profile.sexo ?? null,
+    objetivo: profile.objetivo ?? null,
+    pesoKg: weight ? weight.pesoKg : null,
+    pesoData: weight ? dateKey(weight.date) : null,
+    imc: weight && profile.alturaM ? round(weight.pesoKg / profile.alturaM ** 2) : null,
+    variacaoPesoKg: weight && first && first !== weight ? round(weight.pesoKg - first.pesoKg) : null,
+    primeiraPesagem: first ? dateKey(first.date) : null,
+  };
+}
+
+/** Approximate MET for a cardio activity (Compendium of Physical Activities). */
+function cardioMet(name, kmh) {
+  const n = String(name).toLowerCase();
+  if (n.includes('bicicleta')) {
+    if (n.includes('máquina') || n.includes('maquina') || !kmh) return 6.8;
+    return kmh < 16 ? 4 : kmh < 19 ? 6.8 : kmh < 22 ? 8 : 10;
+  }
+  if (!kmh) return 3.5;
+  if (kmh < 4.8) return 3;
+  if (kmh < 5.6) return 3.5;
+  if (kmh < 6.4) return 4.3;
+  if (kmh < 8) return 5;
+  if (kmh < 9.7) return 8.3;
+  if (kmh < 11.3) return 9.8;
+  return 11;
+}
+
+/** Estimated kcal: MET x body weight x hours. */
+function cardioKcal(entry, pesoKg) {
+  if (!pesoKg || !(entry.minutos > 0)) return null;
+  const kmh = entry.km > 0 ? entry.km / (entry.minutos / 60) : null;
+  return Math.round(cardioMet(entry.nome, kmh) * pesoKg * (entry.minutos / 60));
+}
+
+/**
+ * Adds what the body weight makes measurable: relative strength (load / body
+ * weight) and, for bodyweight exercises, the volume moved (reps x body weight).
+ */
+function withBodyWeight(exercicios, pesoKg) {
+  if (!pesoKg) return exercicios;
+  return exercicios.map((e) => (e.pesoCorporal
+    ? { ...e, volumePesoCorporalKg: round((e.repeticoes || 0) * pesoKg) }
+    : { ...e, cargaRelativa: round(e.cargaMaximaKg / pesoKg, 2) }));
+}
+
 /** Pace "m:ss" per km from total minutes and km, or null. */
 function pace(minutes, km) {
   if (!(minutes > 0) || !(km > 0)) return null;
@@ -133,6 +206,7 @@ function cardioEntries(session) {
   return (session.exercises || [])
     .filter((e) => e.cardio && !e.isWarmup)
     .flatMap((e) => (e.sets || []).map((s) => ({
+      date: session.date,
       nome: e.exerciseName,
       minutos: s.durationMinutes || 0,
       km: s.distanceKm || 0,
@@ -141,14 +215,16 @@ function cardioEntries(session) {
 }
 
 /** Cardio is kept apart from the kg volume: sessions, minutes, km and pace. */
-function cardioSummary(sessions) {
+function cardioSummary(sessions, profile = null) {
   const byName = new Map();
   let count = 0;
   for (const session of sessions) {
     const entries = cardioEntries(session);
     if (entries.length) count += 1;
     for (const e of entries) {
-      const item = byName.get(e.nome) || { nome: e.nome, sessoes: 0, minutos: 0, km: 0, minutosComKm: 0, kmComMinutos: 0 };
+      const item = byName.get(e.nome) || { nome: e.nome, sessoes: 0, minutos: 0, km: 0, minutosComKm: 0, kmComMinutos: 0, kcal: null };
+      const kcal = cardioKcal(e, weightAt(profile, e.date)?.pesoKg);
+      if (kcal != null) item.kcal = (item.kcal || 0) + kcal;
       item.sessoes += 1;
       item.minutos += e.minutos;
       item.km += e.km;
@@ -165,11 +241,14 @@ function cardioSummary(sessions) {
     minutos: round(i.minutos),
     km: round(i.km, 2),
     ritmoMinPorKm: pace(i.minutosComKm, i.kmComMinutos),
+    ...(i.kcal != null && { kcalEstimadas: i.kcal }),
   }));
+  const kcal = atividades.filter((a) => a.kcalEstimadas != null);
   return {
     sessoes: count,
     minutos: round(atividades.reduce((t, a) => t + a.minutos, 0)),
     km: round(atividades.reduce((t, a) => t + a.km, 0), 2),
+    ...(kcal.length && { kcalEstimadas: kcal.reduce((t, a) => t + a.kcalEstimadas, 0) }),
     atividades,
   };
 }
@@ -208,7 +287,7 @@ function percentChange(current, previous) {
  * Metrics for one period plus a comparison with [previousRange].
  * [sessions] is the full history so records and "new" exercises are real.
  */
-function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
+function computePeriodMetrics({ sessions, events = [], range, previousRange, profile = null }) {
   const history = finishedSessions(sessions);
   const current = history.filter((s) => inRange(s.date, range));
   const before = history.filter((s) => s.date < range.start);
@@ -278,6 +357,8 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
     });
   }
   exercicios.sort((a, b) => b.volumeKg - a.volumeKg);
+  const lastDay = new Date(range.end.getTime() - 1);
+  const perfil = profileSummary(profile, lastDay);
 
   const aumentos = events
     .filter((e) => isRealIncrease(e) && inRange(e.occurredAt, range))
@@ -301,7 +382,7 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
         fim: dateKey(new Date(previousRange.end.getTime() - DAY_MS)),
       },
       totais: previousTotals,
-      cardio: (({ sessoes, minutos, km }) => ({ sessoes, minutos, km }))(cardioSummary(previous)),
+      cardio: (({ sessoes, minutos, km }) => ({ sessoes, minutos, km }))(cardioSummary(previous, profile)),
       variacaoPercentual: {
         sessoes: percentChange(totals.sessoes, previousTotals.sessoes),
         volumeKg: percentChange(totals.volumeKg, previousTotals.volumeKg),
@@ -314,14 +395,15 @@ function computePeriodMetrics({ sessions, events = [], range, previousRange }) {
       duracaoMin:
         s.startAt && s.endAt ? Math.round((s.endAt - s.startAt) / 60000) : null,
       ...periodTotals([s]),
-      ...(cardioEntries(s).length && { cardio: cardioEntries(s) }),
+      ...(cardioEntries(s).length && { cardio: cardioEntries(s).map(({ date, ...e }) => e) }),
     })),
-    cardio: cardioSummary(current),
+    cardio: cardioSummary(current, profile),
+    ...(perfil && { perfil }),
     aquecimento: { feitos: warmupDone, pulados: warmupSkipped },
     percepcao: effort,
     naoRealizados: notDone,
     porCategoria: byCategory,
-    exercicios,
+    exercicios: withBodyWeight(exercicios, perfil && perfil.pesoKg),
     aumentosRegistrados: aumentos,
     sessoesAntesDoPeriodo: before.length,
     ultimoTreinoAntes: before.length ? dateKey(before[before.length - 1].date) : null,
@@ -360,7 +442,8 @@ function previousEra(sessions, since) {
  * With `since` (start of the Nova Era) only later sessions count; earlier ones
  * become `eraAnterior` and each exercise gets its starting load.
  */
-function computeOverallMetrics({ sessions, events = [], until, since = null }) {
+function computeOverallMetrics({ sessions, events = [], until, since = null, profile = null }) {
+  const perfil = profileSummary(profile, new Date(until.getTime() - 1));
   const all = finishedSessions(sessions).filter((s) => s.date < until);
   const history = since ? all.filter((s) => s.date >= since) : all;
   const eraAnterior = since ? previousEra(all.filter((s) => s.date < since), since) : null;
@@ -374,6 +457,7 @@ function computeOverallMetrics({ sessions, events = [], until, since = null }) {
       meses: [],
       exercicios: [],
       cardio: cardioSummary([]),
+      ...(perfil && { perfil }),
       eraAnterior,
     };
   }
@@ -415,8 +499,11 @@ function computeOverallMetrics({ sessions, events = [], until, since = null }) {
     totais: periodTotals(history),
     mediaSessoesPorSemana: round(history.length / weeks, 2),
     meses: [...months.entries()].map(([mes, list]) => ({ mes, ...periodTotals(list) })),
-    exercicios,
-    cardio: cardioSummary(history),
+    exercicios: perfil && perfil.pesoKg
+      ? exercicios.map((e) => (e.pesoCorporal ? e : { ...e, cargaRelativaAtual: round(e.cargaAtualKg / perfil.pesoKg, 2) }))
+      : exercicios,
+    cardio: cardioSummary(history, profile),
+    ...(perfil && { perfil }),
     aumentosRegistrados: events.filter(
       (e) => isRealIncrease(e) && e.occurredAt < until && (!since || e.occurredAt >= since),
     ).length,

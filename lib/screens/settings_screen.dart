@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import '../app/appearance/app_appearance_mode.dart';
@@ -6,6 +8,9 @@ import '../app/appearance/retro/retro_colors.dart';
 import '../app/appearance/retro/retro_crt_overlay.dart';
 import '../app/appearance/retro/retro_terminal_adapter.dart';
 import '../app/appearance/retro/widgets/retro_panel.dart';
+import '../models/body_profile.dart';
+import '../services/body_profile_service.dart';
+import 'profile_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -28,9 +33,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final appearance = AppAppearanceScope.of(context);
     final isRetro = appearance.isRetro;
 
+    // No Firebase app (widget tests): no profile section.
+    final uid =
+        Firebase.apps.isEmpty ? null : FirebaseAuth.instance.currentUser?.uid;
     final body = ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        if (uid != null) ...[
+          _Section(
+            title: 'PERFIL',
+            retro: isRetro,
+            child: _ProfileSummary(uid: uid),
+          ),
+          const SizedBox(height: 16),
+        ],
         _Section(
           title: 'INTERFACE',
           retro: isRetro,
@@ -78,6 +94,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       body: SafeArea(child: body),
+    );
+  }
+}
+
+class _ProfileSummary extends StatefulWidget {
+  const _ProfileSummary({required this.uid});
+
+  final String uid;
+
+  @override
+  State<_ProfileSummary> createState() => _ProfileSummaryState();
+}
+
+class _ProfileSummaryState extends State<_ProfileSummary> {
+  final BodyProfileService _service = BodyProfileService();
+  late final Stream<BodyProfile> _profile = _service.watchProfile(widget.uid);
+  late final Stream<List<BodyWeightEntry>> _weights =
+      _service.watchWeights(widget.uid);
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<BodyProfile>(
+      stream: _profile,
+      builder: (context, profileSnapshot) {
+        return StreamBuilder<List<BodyWeightEntry>>(
+          stream: _weights,
+          builder: (context, weightSnapshot) {
+            final weights = weightSnapshot.data ?? const [];
+            final text = profileSummaryText(
+              profileSnapshot.data ?? const BodyProfile(),
+              weights.isEmpty ? null : weights.first,
+              DateTime.now(),
+            );
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(text),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.person_outline),
+                  label: const Text('Editar perfil'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ProfileScreen(uid: widget.uid),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

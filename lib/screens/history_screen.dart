@@ -1,6 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../components/ui/status_tag.dart';
+
+import '../components/ui/app_state_message.dart';
 import 'package:intl/intl.dart';
 
 import '../models/machine_configuration.dart';
@@ -27,7 +30,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final user = FirebaseAuth.instance.currentUser;
 
     final content = user == null
-        ? const Center(child: Text('Usuário não autenticado.'))
+        ? AppStateMessage.error('Usuário não autenticado.')
         : StreamBuilder<List<Workout>>(
             stream: _workoutService.getWorkoutsForUser(user.uid),
             builder: (context, workoutsSnapshot) {
@@ -63,14 +66,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     debugPrint(
                       'Erro ao carregar histórico: ${snapshot.error}',
                     );
-                    return const Center(
-                        child: Text('Erro ao carregar histórico.'));
+                    return AppStateMessage.error('Erro ao carregar histórico.');
                   }
 
                   final docs = snapshot.data?.docs ?? [];
                   if (docs.isEmpty) {
-                    return const Center(
-                      child: Text('Nenhuma sessão registrada ainda.'),
+                    return const AppStateMessage.empty(
+                      'Nenhuma sessão registrada ainda.',
                     );
                   }
 
@@ -160,11 +162,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               const SizedBox(height: 8),
               if (sourceUnavailable) ...[
-                Text(
+                StatusTag(
                   session.workoutId.trim().isEmpty
                       ? 'Origem indisponível'
                       : 'Origem excluída',
-                  style: Theme.of(context).textTheme.bodySmall,
+                  tone: StatusTone.warning,
                 ),
                 const SizedBox(height: 4),
               ],

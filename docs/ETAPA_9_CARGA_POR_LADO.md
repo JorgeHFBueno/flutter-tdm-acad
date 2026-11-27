@@ -117,3 +117,16 @@ criada (`remada_baixa_unilateral`, polia, por lado) e a sessão movida para
 ela; Serrote (halteres, por lado); Abs Banco = abdominal remador (peso do
 corpo); Remada baixa e Puxada alta = polia; as 4 séries lançadas no
 aquecimento passaram para a Barra Supino (fadiga).
+
+## Perfil e regras do Firestore (27/11/2026)
+
+- Perfil em `users/{uid}.perfil` (`nascimento` "AAAA-MM-DD", `alturaM`, `sexo`,
+  `objetivo`) e pesagens em `users/{uid}/pesagens` (`pesoKg`, `data`). No app:
+  Configurações > PERFIL > Editar perfil (dados + histórico de pesagens).
+- Relatórios: bloco `perfil` (idade, IMC, peso da época, variação de peso),
+  `cargaRelativa` (carga / peso do corpo), `volumePesoCorporalKg` (repetições x
+  peso) e `kcalEstimadas` do cardio (MET x peso x horas).
+- `firestore.rules`: cada usuário só lê e grava `users/{uid}/**`, as próprias
+  sessões (`workout_history.ownerUid`) e análises; o catálogo exige login; o
+  resto fica fechado. Os scripts Node usam o Admin SDK e não passam pelas regras.
+  Publicar: `firebase deploy --only firestore:rules`.

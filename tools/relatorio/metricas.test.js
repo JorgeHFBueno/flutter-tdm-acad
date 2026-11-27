@@ -153,3 +153,27 @@ test('cardio is summarized apart from kg volume', () => {
   assert.deepEqual(r.percepcao, { adequate: 3 });
   assert.deepEqual(r.treinos[0].cardio, [{ nome: 'A pé', minutos: 30, km: 5 }]);
 });
+
+test('profile adds age, BMI, relative strength, bodyweight volume and cardio kcal', () => {
+  const profile = {
+    nascimento: '2000-11-05', alturaM: 1.77, sexo: 'masculino', objetivo: 'hipertrofia',
+    pesagens: [{ date: new Date('2026-11-01T08:00'), pesoKg: 73 }, { date: new Date('2026-11-12T08:00'), pesoKg: 71 }],
+  };
+  const sessions = [
+    session('2026-11-13T19:00', [
+      ex('supino', [[10, 71]]),
+      ex('barra fixa', [[8, 0], [7, 0]], { pesoCorporal: true }),
+      { exerciseId: 'a_pe', exerciseName: 'A Pé', cardio: true, status: 'completed', perceivedEffort: 'light',
+        sets: [{ reps: 0, weightKg: 0, durationMinutes: 60, distanceKm: 6 }] },
+    ]),
+  ];
+  const r = m.computePeriodMetrics({ sessions, range: m.weekRange(new Date(2026, 10, 15, 19)), profile });
+  assert.deepEqual(r.perfil, {
+    idade: 26, alturaM: 1.77, sexo: 'masculino', objetivo: 'hipertrofia', pesoKg: 71,
+    pesoData: '2026-11-12', imc: 22.7, variacaoPesoKg: -2, primeiraPesagem: '2026-11-01',
+  });
+  assert.equal(r.exercicios.find((e) => e.nome === 'supino').cargaRelativa, 1);
+  assert.equal(r.exercicios.find((e) => e.nome === 'barra fixa').volumePesoCorporalKg, 1065);
+  // 6 km/h walk = MET 4.3 x 71 kg x 1 h
+  assert.equal(r.cardio.kcalEstimadas, 305);
+});

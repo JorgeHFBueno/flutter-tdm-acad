@@ -16,6 +16,13 @@ class AppAppearanceScope extends InheritedNotifier<AppAppearanceController> {
     return scope!.notifier!;
   }
 
+  /// Como [of], mas devolve null fora do escopo (ex.: telas montadas em teste).
+  static AppAppearanceController? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<AppAppearanceScope>()
+        ?.notifier;
+  }
+
   static AppAppearanceController read(BuildContext context) {
     final element =
         context.getElementForInheritedWidgetOfExactType<AppAppearanceScope>();

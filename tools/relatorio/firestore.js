@@ -160,9 +160,25 @@ async function loadEvents(db, uid) {
   return events;
 }
 
+/**
+ * Body profile (users/{uid}.perfil) and weighings (users/{uid}/pesagens),
+ * as { nascimento, alturaM, sexo, objetivo, pesagens: [{ date, pesoKg }] } or null.
+ */
+async function loadProfile(db, uid) {
+  const user = db.collection('users').doc(uid);
+  const [doc, weighings] = await Promise.all([user.get(), user.collection('pesagens').get()]);
+  const perfil = doc.get('perfil') || null;
+  const pesagens = weighings.docs
+    .map((d) => ({ date: toDate(d.get('data')), pesoKg: num(d.get('pesoKg')) }))
+    .filter((p) => p.date && p.pesoKg > 0)
+    .sort((a, b) => a.date - b.date);
+  if (!perfil && !pesagens.length) return null;
+  return { ...(perfil || {}), pesagens };
+}
+
 /** Start of the "Nova Era" (users/{uid}.novaEraInicio), or null. */
 async function loadEraStart(db, uid) {
   return toDate((await db.collection('users').doc(uid).get()).get('novaEraInicio'));
 }
 
-module.exports = { init, loadSessions, loadEvents, loadEraStart, admin, fixText, CONFIG_DIR };
+module.exports = { init, loadSessions, loadEvents, loadEraStart, loadProfile, admin, fixText, CONFIG_DIR };

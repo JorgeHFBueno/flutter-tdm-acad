@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../components/ui/app_state_message.dart';
 import 'package:intl/intl.dart';
 
 import '../models/workout_analysis_log.dart';
@@ -18,7 +20,7 @@ class WorkoutAnalysisHistoryScreen extends StatelessWidget {
     final user = FirebaseAuth.instance.currentUser;
 
     final body = user == null
-        ? const Center(child: Text('Usuário não autenticado.'))
+        ? AppStateMessage.error('Usuário não autenticado.')
         : StreamBuilder<List<WorkoutAnalysisLog>>(
             stream: _logService.getLogsForUser(user.uid),
             builder: (context, snapshot) {
@@ -30,15 +32,14 @@ class WorkoutAnalysisHistoryScreen extends StatelessWidget {
                 debugPrint(
                   'Erro ao carregar histórico de análises da IA: ${snapshot.error}',
                 );
-                return const Center(
-                  child: Text('Erro ao carregar histórico de análises da IA.'),
-                );
+                return AppStateMessage.error(
+                    'Erro ao carregar histórico de análises da IA.');
               }
 
               final logs = snapshot.data ?? [];
               if (logs.isEmpty) {
-                return const Center(
-                  child: Text('Você ainda não possui análises salvas.'),
+                return const AppStateMessage.empty(
+                  'Você ainda não possui análises salvas.',
                 );
               }
 
