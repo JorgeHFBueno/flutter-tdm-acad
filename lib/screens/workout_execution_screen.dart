@@ -4,6 +4,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../app/appearance/retro/retro_typography.dart';
+
+import '../app/appearance/app_semantic_colors.dart';
+
 import '../app/appearance/retro/retro_colors.dart';
 import '../app/appearance/retro/retro_metrics.dart';
 import '../components/observation_dialog.dart';
@@ -253,7 +257,8 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
                   'Uma ou mais maquinas deste treino nao estao disponiveis. Edite o treino antes de iniciar.',
-                  style: TextStyle(color: Colors.orange[800]),
+                  style:
+                      TextStyle(color: AppSemanticColors.of(context).warning),
                 ),
               ),
             if (widget.workout.machineIds.isEmpty)
@@ -272,9 +277,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 _phase != WorkoutExecutionPhase.warmup) ...[
               if (_phase == WorkoutExecutionPhase.choosingNextExercise) ...[
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'Escolha o proximo exercicio',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 if (visibleEntries.isEmpty)
@@ -322,9 +327,9 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Aquecimento',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
@@ -654,7 +659,7 @@ class _WorkoutExecutionScreenState extends State<WorkoutExecutionScreen>
                 minimumSize: const Size(56, 48),
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 textStyle: const TextStyle(
-                  fontFamily: 'monospace',
+                  fontFamily: RetroTypography.fontFamily,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0,
                 ),
@@ -1903,7 +1908,7 @@ class _StepperButton extends StatelessWidget {
             style: OutlinedButton.styleFrom(
               padding: EdgeInsets.zero,
               textStyle: const TextStyle(
-                fontFamily: 'monospace',
+                fontFamily: RetroTypography.fontFamily,
                 fontSize: 22,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 0,

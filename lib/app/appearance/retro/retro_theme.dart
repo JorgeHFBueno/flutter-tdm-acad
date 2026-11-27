@@ -1,18 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../app_semantic_colors.dart';
 import 'retro_colors.dart';
 import 'retro_metrics.dart';
+import 'retro_typography.dart';
 
 class RetroTheme {
   const RetroTheme._();
 
   static ThemeData data() {
     final base = ThemeData.dark(useMaterial3: true);
-    final textTheme = base.textTheme.apply(
-      fontFamily: 'monospace',
-      bodyColor: RetroColors.text,
-      displayColor: RetroColors.text,
-    );
+    final textTheme = RetroTypography.textTheme(base.textTheme);
 
     final border = OutlineInputBorder(
       borderRadius: BorderRadius.circular(RetroMetrics.radius),
@@ -28,9 +26,13 @@ class RetroTheme {
         onSecondary: RetroColors.textOnAmber,
         surface: RetroColors.surface,
         onSurface: RetroColors.text,
+        onSurfaceVariant: RetroColors.mutedText,
         error: RetroColors.error,
         onError: RetroColors.textOnAmber,
       ),
+      extensions: const [
+        AppSemanticColors(warning: RetroColors.warning),
+      ],
       textTheme: textTheme,
       primaryTextTheme: textTheme,
       appBarTheme: const AppBarTheme(
@@ -40,7 +42,7 @@ class RetroTheme {
         centerTitle: false,
         titleTextStyle: TextStyle(
           color: RetroColors.amber,
-          fontFamily: 'monospace',
+          fontFamily: RetroTypography.fontFamily,
           fontSize: 18,
           fontWeight: FontWeight.w800,
           letterSpacing: 0,
@@ -101,7 +103,7 @@ class RetroTheme {
             borderRadius: BorderRadius.circular(RetroMetrics.radius),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: RetroTypography.fontFamily,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
@@ -115,7 +117,7 @@ class RetroTheme {
             borderRadius: BorderRadius.circular(RetroMetrics.radius),
           ),
           textStyle: const TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: RetroTypography.fontFamily,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
@@ -125,7 +127,7 @@ class RetroTheme {
         style: TextButton.styleFrom(
           foregroundColor: RetroColors.amberLight,
           textStyle: const TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: RetroTypography.fontFamily,
             fontWeight: FontWeight.w800,
             letterSpacing: 0,
           ),
@@ -180,7 +182,7 @@ class RetroTheme {
         backgroundColor: RetroColors.surfaceAlternative,
         contentTextStyle: TextStyle(
           color: RetroColors.text,
-          fontFamily: 'monospace',
+          fontFamily: RetroTypography.fontFamily,
         ),
       ),
       bottomSheetTheme: const BottomSheetThemeData(
@@ -191,7 +193,7 @@ class RetroTheme {
         color: RetroColors.surfaceAlternative,
         textStyle: TextStyle(
           color: RetroColors.text,
-          fontFamily: 'monospace',
+          fontFamily: RetroTypography.fontFamily,
         ),
       ),
       tooltipTheme: TooltipThemeData(

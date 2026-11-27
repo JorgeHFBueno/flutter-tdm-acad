@@ -33,7 +33,7 @@ class WorkoutAnalysisDetailScreen extends StatelessWidget {
         child: SingleChildScrollView(
           child: Text(
             log.response,
-            style: const TextStyle(fontSize: 16),
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
         ),
       ),

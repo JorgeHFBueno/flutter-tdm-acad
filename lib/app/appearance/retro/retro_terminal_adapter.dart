@@ -2,6 +2,7 @@ import 'package:easy_terminal/easy_terminal.dart';
 import 'package:flutter/material.dart';
 
 import 'retro_colors.dart';
+import 'retro_typography.dart';
 
 class RetroTerminalAdapter {
   const RetroTerminalAdapter._();
@@ -15,7 +16,7 @@ class RetroTerminalAdapter {
         errorColor: RetroColors.error,
         successColor: RetroColors.success,
         warningColor: RetroColors.amberLight,
-        fontFamily: 'monospace',
+        fontFamily: RetroTypography.fontFamily,
         fontSize: 14,
         lineHeight: 1.25,
         borderRadius: 3,

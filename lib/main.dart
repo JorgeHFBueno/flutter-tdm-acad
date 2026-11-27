@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'app/appearance/app_appearance_controller.dart';
+import 'app/appearance/app_content_frame.dart';
 import 'app/appearance/app_appearance_overlay.dart';
 import 'app/appearance/app_appearance_scope.dart';
 import 'app/appearance/app_theme_factory.dart';
@@ -58,7 +59,9 @@ class MyApp extends StatelessWidget {
             initialRoute: '/',
             builder: (context, child) {
               return AppAppearanceOverlay(
-                child: child ?? const SizedBox.shrink(),
+                child: AppContentFrame(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               );
             },
             routes: {

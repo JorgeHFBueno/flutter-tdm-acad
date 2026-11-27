@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../app/appearance/app_semantic_colors.dart';
+
 import '../models/machine_history.dart';
 import '../models/workout.dart';
 import '../models/workout_machine_resolution.dart';
@@ -306,7 +308,7 @@ class _WorkoutTile extends StatelessWidget {
       subtitle: Text(subtitle),
       leading: Icon(
         missing.isEmpty ? Icons.fitness_center : Icons.error_outline,
-        color: missing.isEmpty ? null : Colors.orange[800],
+        color: missing.isEmpty ? null : AppSemanticColors.of(context).warning,
       ),
       onTap: onTap,
     );

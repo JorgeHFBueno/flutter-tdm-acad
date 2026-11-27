@@ -200,9 +200,9 @@ class _WorkoutCreationScreenState extends State<WorkoutCreationScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Maquinas do treino',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Expanded(

@@ -15,6 +15,7 @@ class RetroColors {
   static const border = Color(0xCC805600);
   static const borderStrong = Color(0xFFA66F00);
   static const error = Color(0xFFFF8A3D);
+  static const warning = Color(0xFFFF8A3D);
   static const success = Color(0xFFFFC247);
   static const disabled = Color(0x66805600);
   static const scanline = Color(0xFF2A1A03);

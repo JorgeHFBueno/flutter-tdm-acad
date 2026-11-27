@@ -2,6 +2,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../app/appearance/retro/retro_typography.dart';
+
+import '../app/appearance/app_semantic_colors.dart';
+
 import '../components/observation_dialog.dart';
 import '../data/exercise_catalog.dart';
 import '../data/machine_catalog_seed.dart';
@@ -389,8 +393,7 @@ class _MachineCard extends StatelessWidget {
             children: [
               Text(
                 machine.exerciseName,
-                style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleSmall,
               ),
               Text(MachineCatalogCategory.display(machine.category)),
               const SizedBox(height: 8),
@@ -398,13 +401,14 @@ class _MachineCard extends StatelessWidget {
               if (!config.isComplete)
                 Text(
                   'Configuracao incompleta',
-                  style: TextStyle(color: Colors.orange[800]),
+                  style:
+                      TextStyle(color: AppSemanticColors.of(context).warning),
                 ),
               const SizedBox(height: 8),
               Text('Realizado: ${machine.completionCount} vezes'),
               SelectableText(
                 buildCompletionMarks(machine.completionCount),
-                style: const TextStyle(fontFamily: 'monospace'),
+                style: const TextStyle(fontFamily: RetroTypography.fontFamily),
               ),
               if (observation.isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -553,8 +557,7 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
             children: [
               Text(
                 widget.catalogItem?.popularName ?? machine.exerciseName,
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               if (widget.catalogItem != null) ...[
                 Text(widget.catalogItem!.scientificName),
@@ -568,7 +571,8 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
               if (!config.isComplete)
                 Text(
                   'Configuracao incompleta',
-                  style: TextStyle(color: Colors.orange[800]),
+                  style:
+                      TextStyle(color: AppSemanticColors.of(context).warning),
                 ),
               Align(
                 alignment: Alignment.centerRight,
@@ -582,7 +586,10 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
               Text('Realizado: ${machine.completionCount} vezes'),
               SelectableText(
                 _historyLine(machine),
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 16),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(fontFamily: RetroTypography.fontFamily),
               ),
               if ((machine.eventTrackingBaselineCount ?? 0) > 0)
                 Text(
@@ -666,9 +673,9 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Eventos',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 8),
         Wrap(

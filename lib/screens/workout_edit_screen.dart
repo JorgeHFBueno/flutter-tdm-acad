@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../app/appearance/app_semantic_colors.dart';
+
 import '../models/machine_configuration.dart';
 import '../models/machine_history.dart';
 import '../models/machine_catalog_item.dart';
@@ -195,18 +197,17 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'A configuracao pertence a Maquina e e compartilhada por todos os treinos.',
-            style: TextStyle(fontSize: 12),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
           if (_addedFromSessions.isNotEmpty) ...[
             const SizedBox(height: 8),
             Text(
               '${_addedFromSessions.length} maquina(s) feitas no treino fora da ficha ja vem marcadas (nova). Desmarque se nao quiser mante-las.',
-              style: TextStyle(
-                fontSize: 12,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
           ],
           const SizedBox(height: 12),
@@ -249,7 +250,8 @@ class _WorkoutEditScreenState extends State<WorkoutEditScreen> {
                   const Divider(),
                   Text(
                     'Uma ou mais maquinas deste treino nao estao disponiveis. Remova ou substitua antes de iniciar.',
-                    style: TextStyle(color: Colors.orange[800]),
+                    style:
+                        TextStyle(color: AppSemanticColors.of(context).warning),
                   ),
                   for (final id in missingIds)
                     ListTile(

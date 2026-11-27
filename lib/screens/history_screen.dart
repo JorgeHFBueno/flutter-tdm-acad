@@ -152,10 +152,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       sourceUnavailable
                           ? 'Treino excluído - ${session.workoutName}'
                           : session.workoutName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: Theme.of(context).textTheme.titleSmall,
                     ),
                   ),
                   Text(dateLabel),
@@ -167,7 +164,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   session.workoutId.trim().isEmpty
                       ? 'Origem indisponível'
                       : 'Origem excluída',
-                  style: TextStyle(color: Colors.grey[700]),
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
               ],

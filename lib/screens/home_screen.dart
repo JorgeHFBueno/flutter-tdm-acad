@@ -33,10 +33,7 @@ class HomeScreen extends StatelessWidget {
         children: [
           Text(
             'Bem-vindo, ${user.displayName ?? user.email ?? 'usuário'}',
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
           StreamBuilder<WorkoutSession?>(
@@ -134,20 +131,14 @@ class HomeScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Seu treino sugerido para hoje:',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
                 const SizedBox(height: 8),
                 Text(
                   workout.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: Theme.of(context).textTheme.titleLarge,
                 ),
                 const SizedBox(height: 4),
                 Text('${workout.machineIds.length} maquina(s)'),

@@ -42,8 +42,7 @@ class _WorkoutSessionDetailScreenState
             children: [
               Text(
                 session.workoutName,
-                style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 8),
               Text('Realizado em: $dateLabel'),
@@ -54,9 +53,9 @@ class _WorkoutSessionDetailScreenState
                 'Volume total: ${formatCompactNumber(calculateSessionVolume(session))} kg reps',
               ),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Exercícios',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 8),
               ...session.exercises.map(_buildExerciseCard),
@@ -84,10 +83,7 @@ class _WorkoutSessionDetailScreenState
                 Expanded(
                   child: Text(
                     title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
                 if (!exercise.isWarmup && exercise.perceivedEffort != null)
